@@ -23,7 +23,7 @@
       <span aria-hidden="true">🗂️</span>
       <span id="sidebar-toggle-label" class="sidebar-toggle-text">Hide Sidebar</span>
     </button>
-    <div class="header-badge">VAULT 101</div>
+    <button id="vault-badge" class="header-badge" type="button" title="Switch vault" aria-label="Switch vault">VAULT —</button>
   </div>
 </header>
 
@@ -161,6 +161,38 @@
 </main>
 
 <div id="toast" class="toast hidden"></div>
+
+<!-- Vault picker modal -->
+<div id="vault-modal" class="vault-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="vault-modal-title">
+  <div class="vault-modal-box">
+    <div class="vault-modal-header">
+      <div class="vault-modal-icon">🔒</div>
+      <h2 id="vault-modal-title">Vault-Tec Registry</h2>
+      <p class="vault-modal-subtitle">Select a vault to manage its family records, or create a new one.</p>
+    </div>
+
+    <div class="vault-modal-section">
+      <h3>📂 Existing Vaults</h3>
+      <div id="vault-list" class="vault-list">
+        <p class="vault-empty">No vaults yet — create one below.</p>
+      </div>
+    </div>
+
+    <div class="vault-modal-section">
+      <h3>✨ Create New Vault</h3>
+      <form id="vault-create-form" class="vault-create-form" autocomplete="off">
+        <div class="vault-input-row">
+          <span class="vault-prefix" aria-hidden="true">VAULT</span>
+          <label for="vault-number-input" class="sr-only">Vault Number</label>
+          <input type="number" id="vault-number-input" min="1" max="9999" step="1" placeholder="e.g. 101" required>
+          <button type="submit" class="btn btn-primary">Enter Vault</button>
+        </div>
+      </form>
+    </div>
+
+    <button id="vault-modal-close" class="vault-modal-close hidden" type="button" aria-label="Close vault picker">✕</button>
+  </div>
+</div>
 
 <!-- Confirm modal -->
 <div id="confirm-modal" class="confirm-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-message">

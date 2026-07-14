@@ -23,7 +23,8 @@ const GENDER_LABELS = {
 };
 
 /* ── App state ────────────────────────────────────────────── */
-let data = Storage.load();
+let currentVault = null;
+let data = { persons: [], couples: [] };
 let renderCounter = 0; // unique IDs for mermaid.render()
 let legacyIdCounter = 0;
 
@@ -58,6 +59,13 @@ const confirmModal     = document.getElementById('confirm-modal');
 const confirmModalMsg  = document.getElementById('confirm-modal-message');
 const confirmModalOk   = document.getElementById('confirm-modal-confirm');
 const confirmModalCancel = document.getElementById('confirm-modal-cancel');
+
+const vaultBadge       = document.getElementById('vault-badge');
+const vaultModal       = document.getElementById('vault-modal');
+const vaultListEl      = document.getElementById('vault-list');
+const vaultCreateForm  = document.getElementById('vault-create-form');
+const vaultNumberInput = document.getElementById('vault-number-input');
+const vaultModalClose  = document.getElementById('vault-modal-close');
 
 /* ── Toast notification ───────────────────────────────────── */
 let toastTimer = null;
@@ -141,7 +149,7 @@ function partnerPlaceholder(requiredGender) {
 
 /* ── Persist & refresh ────────────────────────────────────── */
 function save() {
-  Storage.save(data);
+  Storage.save(currentVault, data);
 }
 
 function refresh() {
@@ -485,8 +493,8 @@ copyMermaidBtn.addEventListener('click', async () => {
 
 /* ── Event: Export ────────────────────────────────────────── */
 exportBtn.addEventListener('click', () => {
-  Storage.exportJSON(data);
-  showToast('Exported family-tree.json', 'success');
+  Storage.exportJSON(currentVault, data);
+  showToast(`Exported vault-${currentVault}-family-tree.json`, 'success');
 });
 
 /* ── Event: Import ────────────────────────────────────────── */
@@ -562,5 +570,96 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => { /* silent */ });
 }
 
+/* ── Vault picker ─────────────────────────────────────────── */
+
+/** Switch to a vault: update badge, load its data, re-render. */
+function enterVault(vaultNumber) {
+  currentVault = String(vaultNumber);
+  Storage.setActiveVault(currentVault);
+  vaultBadge.textContent = `VAULT ${currentVault}`;
+  data = Storage.load(currentVault);
+}
+
+function openVaultPicker() {
+  renderVaultList();
+  vaultModal.classList.remove('hidden');
+  // Only allow closing when a vault is already active
+  vaultModalClose.classList.toggle('hidden', !currentVault);
+  vaultNumberInput.value = '';
+  // Focus first vault button if available, otherwise the number input
+  const firstVaultBtn = vaultListEl.querySelector('.vault-item');
+  (firstVaultBtn || vaultNumberInput).focus();
+}
+
+function closeVaultPicker() {
+  vaultModal.classList.add('hidden');
+}
+
+function renderVaultList() {
+  const vaults = Storage.getVaults();
+  vaultListEl.innerHTML = '';
+  if (vaults.length === 0) {
+    vaultListEl.innerHTML = '<p class="vault-empty">No vaults yet — create one below.</p>';
+    return;
+  }
+  vaults.forEach((num) => {
+    const vd = Storage.load(num);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `vault-item${num === currentVault ? ' vault-item--active' : ''}`;
+    btn.innerHTML = `
+      <span class="vault-item-name">VAULT ${escapeHtml(num)}</span>
+      <span class="vault-item-stats">${vd.persons.length} dweller${vd.persons.length !== 1 ? 's' : ''} · ${vd.couples.length} couple${vd.couples.length !== 1 ? 's' : ''}</span>
+    `;
+    btn.addEventListener('click', () => {
+      enterVault(num);
+      closeVaultPicker();
+      refresh();
+    });
+    vaultListEl.appendChild(btn);
+  });
+}
+
+vaultCreateForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const raw = vaultNumberInput.value.trim();
+  const parsed = Number(raw);
+  if (!raw || !Number.isInteger(parsed) || parsed < 1 || parsed > 9999) {
+    showToast('Enter a whole vault number between 1 and 9999', 'error');
+    return;
+  }
+  const vaultNum = String(parsed);
+  const isNew = Storage.createVault(vaultNum);
+  enterVault(vaultNum);
+  closeVaultPicker();
+  refresh();
+  showToast(isNew ? `Welcome to Vault ${vaultNum}!` : `Entered Vault ${vaultNum}`, 'success');
+});
+
+vaultBadge.addEventListener('click', () => openVaultPicker());
+
+vaultModalClose.addEventListener('click', () => {
+  if (currentVault) closeVaultPicker();
+});
+
+vaultModal.addEventListener('click', (e) => {
+  if (e.target === vaultModal && currentVault) closeVaultPicker();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !vaultModal.classList.contains('hidden') && currentVault) {
+    closeVaultPicker();
+  }
+});
+
 /* ── Initial render ───────────────────────────────────────── */
-refresh();
+(function init() {
+  const migrated = Storage.migrateLegacyData();
+  const active   = migrated || Storage.getActiveVault();
+  if (active) {
+    enterVault(active);
+    refresh();
+  } else {
+    openVaultPicker();
+  }
+}());
