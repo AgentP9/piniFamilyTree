@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6c63ff">
+  <meta name="description" content="Fallout Shelter Family Tree Visualizer">
+  <title>Pini Family Tree</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Mermaid v10 (UMD build, no auto-start) -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+
+<header>
+  <img src="icons/icon.svg" alt="logo" class="logo">
+  <h1>Pini Family Tree</h1>
+  <span class="subtitle">Fallout Shelter Visualizer</span>
+</header>
+
+<main>
+  <!-- ── Sidebar ─────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Add Person -->
+    <section class="card">
+      <h2>Add Person</h2>
+      <form id="add-person-form" autocomplete="off">
+        <div class="form-group">
+          <label for="person-name">Name</label>
+          <input type="text" id="person-name" placeholder="Enter full name" required maxlength="60">
+        </div>
+        <div class="form-group">
+          <label>Gender</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="gender" value="male" checked>
+              <span>♂ Male</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="gender" value="female">
+              <span>♀ Female</span>
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">＋ Add Person</button>
+      </form>
+    </section>
+
+    <!-- Create Couple -->
+    <section class="card">
+      <h2>Create Couple</h2>
+      <form id="create-couple-form">
+        <div class="form-group">
+          <label for="couple-person1">Person 1</label>
+          <select id="couple-person1" required>
+            <option value="">— Select person —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="couple-person2">Person 2</label>
+          <select id="couple-person2" required>
+            <option value="">— Select person —</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">⚭ Create Couple</button>
+      </form>
+    </section>
+
+    <!-- Add Child -->
+    <section class="card">
+      <h2>Add Child to Couple</h2>
+      <form id="add-child-form">
+        <div class="form-group">
+          <label for="child-couple">Couple</label>
+          <select id="child-couple" required>
+            <option value="">— Select couple —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="child-person">Child</label>
+          <select id="child-person" required>
+            <option value="">— Select person —</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">👶 Add Child</button>
+      </form>
+    </section>
+
+    <!-- Data management -->
+    <section class="card">
+      <h2>Data</h2>
+      <div class="button-group">
+        <button id="export-btn" class="btn btn-secondary">📤 Export JSON</button>
+        <button id="import-btn" class="btn btn-secondary">📥 Import JSON</button>
+        <button id="clear-btn" class="btn btn-danger">🗑️ Clear All</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none">
+    </section>
+
+  </aside>
+
+  <!-- ── Main content ─────────────────────────────────── -->
+  <div class="content">
+
+    <!-- People -->
+    <section class="card">
+      <h2>People (<span id="persons-count">0</span>)</h2>
+      <div id="persons-list" class="person-list"></div>
+    </section>
+
+    <!-- Couples -->
+    <section class="card">
+      <h2>Couples (<span id="couples-count">0</span>)</h2>
+      <div id="couples-list" class="couple-list"></div>
+    </section>
+
+    <!-- Family tree diagram -->
+    <section class="card">
+      <div class="tree-header">
+        <h2>Family Tree</h2>
+        <div class="tree-controls">
+          <button id="copy-mermaid-btn" class="btn btn-secondary" title="Copy Mermaid source">
+            📋 Copy Code
+          </button>
+        </div>
+      </div>
+
+      <div id="mermaid-diagram" class="mermaid-container">
+        <div class="empty-state">
+          <p>Add people and create couples to see the family tree</p>
+        </div>
+      </div>
+
+      <details class="code-block">
+        <summary>Mermaid source</summary>
+        <pre id="mermaid-code"></pre>
+      </details>
+    </section>
+
+  </div>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/storage.js"></script>
+<script src="js/mermaid-gen.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
