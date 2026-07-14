@@ -93,8 +93,9 @@ function oppositeGender(gender) {
 }
 
 function partnerPlaceholder(requiredGender) {
+  const label = requiredGender ? requiredGender[0].toUpperCase() + requiredGender.slice(1) : '';
   return requiredGender
-    ? `— Select ${requiredGender} dweller —`
+    ? `— Select ${label} dweller —`
     : '— Select dweller —';
 }
 
@@ -185,16 +186,17 @@ function populatePersonSelect(sel, filterFn = () => true, placeholder = '— Sel
   placeholderOpt.textContent = placeholder;
   sel.appendChild(placeholderOpt);
 
-  data.persons.filter(filterFn).forEach((p) => {
+  const filteredPersons = data.persons.filter(filterFn);
+  filteredPersons.forEach((p) => {
     const opt = document.createElement('option');
     opt.value = p.id;
     opt.textContent = `${p.gender === 'male' ? '♂' : '♀'} ${p.name}`;
     sel.appendChild(opt);
   });
-  sel.value = current;
+  const hasCurrentOption = filteredPersons.some((person) => person.id === current);
+  sel.value = hasCurrentOption ? current : '';
   // Reset the selection when the current value is no longer valid under the
   // active gender filter so the form cannot keep a stale, incompatible pair.
-  if (sel.value !== current) sel.value = '';
 }
 
 function populateCoupleSelect(sel) {
