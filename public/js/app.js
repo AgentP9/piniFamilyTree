@@ -53,6 +53,10 @@ const importBtn        = document.getElementById('import-btn');
 const importFile       = document.getElementById('import-file');
 const clearBtn         = document.getElementById('clear-btn');
 const toast            = document.getElementById('toast');
+const confirmModal     = document.getElementById('confirm-modal');
+const confirmModalMsg  = document.getElementById('confirm-modal-message');
+const confirmModalOk   = document.getElementById('confirm-modal-confirm');
+const confirmModalCancel = document.getElementById('confirm-modal-cancel');
 
 /* ── Toast notification ───────────────────────────────────── */
 let toastTimer = null;
@@ -61,6 +65,34 @@ function showToast(msg, type = 'info') {
   toast.className = `toast ${type}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toast.className = 'toast hidden'; }, 2800);
+}
+
+/* ── Confirm modal ────────────────────────────────────────── */
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    confirmModalMsg.textContent = message;
+    confirmModal.classList.remove('hidden');
+    confirmModalOk.focus();
+
+    function cleanup(result) {
+      confirmModal.classList.add('hidden');
+      confirmModalOk.removeEventListener('click', onOk);
+      confirmModalCancel.removeEventListener('click', onCancel);
+      confirmModal.removeEventListener('click', onOverlay);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+
+    const onOk      = () => cleanup(true);
+    const onCancel  = () => cleanup(false);
+    const onOverlay = (e) => { if (e.target === confirmModal) cleanup(false); };
+    const onKey     = (e) => { if (e.key === 'Escape') cleanup(false); };
+
+    confirmModalOk.addEventListener('click', onOk);
+    confirmModalCancel.addEventListener('click', onCancel);
+    confirmModal.addEventListener('click', onOverlay);
+    document.addEventListener('keydown', onKey);
+  });
 }
 
 /* ── Helpers ──────────────────────────────────────────────── */
@@ -336,11 +368,11 @@ addChildForm.addEventListener('submit', (e) => {
 });
 
 /* ── Event: Delete person / couple (delegated) ────────────── */
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
   const delPersonId = e.target.dataset.deletePerson;
   if (delPersonId) {
     const personName = getPersonName(delPersonId);
-    if (!confirm(`Are you sure you want to delete "${personName}"?`)) return;
+    if (!await showConfirm(`Are you sure you want to delete "${personName}"?`)) return;
     data.persons = data.persons.filter((p) => p.id !== delPersonId);
     // Remove from all couples
     data.couples = data.couples.filter(
@@ -357,7 +389,7 @@ document.addEventListener('click', (e) => {
 
   const delCoupleId = e.target.dataset.deleteCouple;
   if (delCoupleId) {
-    if (!confirm('Are you sure you want to delete this couple?')) return;
+    if (!await showConfirm('Are you sure you want to delete this couple?')) return;
     data.couples = data.couples.filter((c) => c.id !== delCoupleId);
     refresh();
     showToast('Couple deleted');
@@ -399,8 +431,8 @@ importFile.addEventListener('change', async () => {
 });
 
 /* ── Event: Clear all ─────────────────────────────────────── */
-clearBtn.addEventListener('click', () => {
-  if (!confirm('Delete ALL people and couples? This cannot be undone.')) return;
+clearBtn.addEventListener('click', async () => {
+  if (!await showConfirm('Delete ALL people and couples? This cannot be undone.')) return;
   data = { persons: [], couples: [] };
   refresh();
   showToast('All data cleared');
