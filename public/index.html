@@ -114,13 +114,19 @@
 
     <!-- People -->
     <section class="card">
-      <h2>🧑‍🤝‍🧑 Dwellers <span class="count-badge" id="persons-count">0</span></h2>
+      <div class="card-header">
+        <h2>🧑‍🤝‍🧑 Dwellers <span class="count-badge" id="persons-count">0</span></h2>
+        <button class="btn-collapse" aria-expanded="true" data-collapse-target="persons-list" title="Collapse">▾</button>
+      </div>
       <div id="persons-list" class="person-list"></div>
     </section>
 
     <!-- Couples -->
     <section class="card">
-      <h2>💑 Couples <span class="count-badge" id="couples-count">0</span></h2>
+      <div class="card-header">
+        <h2>💑 Couples <span class="count-badge" id="couples-count">0</span></h2>
+        <button class="btn-collapse" aria-expanded="true" data-collapse-target="couples-list" title="Collapse">▾</button>
+      </div>
       <div id="couples-list" class="couple-list"></div>
     </section>
 
@@ -131,6 +137,9 @@
         <div class="tree-controls">
           <button id="copy-mermaid-btn" class="btn btn-secondary" title="Copy Mermaid source">
             📋 Copy Code
+          </button>
+          <button id="fullscreen-btn" class="btn btn-secondary" title="View tree in full screen">
+            ⛶ Full Screen
           </button>
         </div>
       </div>

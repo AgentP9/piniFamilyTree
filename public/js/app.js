@@ -39,6 +39,7 @@ const couplePerson2Sel = document.getElementById('couple-person2');
 const addChildForm     = document.getElementById('add-child-form');
 const childCoupleSel   = document.getElementById('child-couple');
 const childPersonSel   = document.getElementById('child-person');
+const fullscreenBtn    = document.getElementById('fullscreen-btn');
 
 const personsList      = document.getElementById('persons-list');
 const couplesList      = document.getElementById('couples-list');
@@ -194,7 +195,17 @@ function renderCouplesList() {
 /* ── Populate <select> elements ───────────────────────────── */
 function populateSelects() {
   populateCouplePersonSelects();
-  populatePersonSelect(childPersonSel);
+
+  // Child dropdown: only free dwellers (not already a child, not in any couple)
+  const childrenIds  = new Set(data.couples.flatMap((c) => c.childIds || []));
+  const coupledIds   = new Set(data.couples.flatMap((c) => [c.person1Id, c.person2Id]));
+  const occupiedIds  = new Set([...childrenIds, ...coupledIds]);
+  populatePersonSelect(
+    childPersonSel,
+    (person) => !occupiedIds.has(person.id),
+    '— Select dweller —'
+  );
+
   populateCoupleSelect(childCoupleSel);
 }
 
@@ -281,6 +292,57 @@ async function renderDiagram() {
   }
 }
 
+/* ── Family-graph helpers ─────────────────────────────────── */
+
+/** Returns a Set of all ancestor IDs (parents, grandparents, …) of personId. */
+function getAncestors(personId) {
+  const ancestors = new Set();
+  function walk(id) {
+    if (ancestors.has(id)) return;
+    ancestors.add(id);
+    data.couples.forEach((c) => {
+      if ((c.childIds || []).includes(id)) {
+        walk(c.person1Id);
+        walk(c.person2Id);
+      }
+    });
+  }
+  data.couples.forEach((c) => {
+    if ((c.childIds || []).includes(personId)) {
+      walk(c.person1Id);
+      walk(c.person2Id);
+    }
+  });
+  return ancestors;
+}
+
+/** Returns a Set of all descendant IDs (children, grandchildren, …) of personId. */
+function getDescendants(personId) {
+  const descendants = new Set();
+  function walk(id) {
+    if (descendants.has(id)) return;
+    descendants.add(id);
+    data.couples.forEach((c) => {
+      if (c.person1Id === id || c.person2Id === id) {
+        (c.childIds || []).forEach((childId) => walk(childId));
+      }
+    });
+  }
+  data.couples.forEach((c) => {
+    if (c.person1Id === personId || c.person2Id === personId) {
+      (c.childIds || []).forEach((childId) => walk(childId));
+    }
+  });
+  return descendants;
+}
+
+/** Returns true if id1 and id2 share at least one parent couple. */
+function areSiblings(id1, id2) {
+  return data.couples.some(
+    (c) => (c.childIds || []).includes(id1) && (c.childIds || []).includes(id2)
+  );
+}
+
 /* ── XSS-safe HTML escaping ───────────────────────────────── */
 function escapeHtml(str) {
   return String(str)
@@ -325,6 +387,15 @@ createCoupleForm.addEventListener('submit', (e) => {
            (c.person1Id === p2 && c.person2Id === p1)
   );
   if (duplicate) { showToast('This couple already exists', 'error'); return; }
+
+  if (getAncestors(p1).has(p2) || getAncestors(p2).has(p1)) {
+    showToast('Cannot form a couple between (grand-)parents and (grand-)children', 'error');
+    return;
+  }
+  if (areSiblings(p1, p2)) {
+    showToast('Cannot form a couple between siblings', 'error');
+    return;
+  }
 
   data.couples.push({ id: genId(), person1Id: p1, person2Id: p2, childIds: [] });
   createCoupleForm.reset();
@@ -372,16 +443,20 @@ document.addEventListener('click', async (e) => {
   const delPersonId = e.target.dataset.deletePerson;
   if (delPersonId) {
     const personName = getPersonName(delPersonId);
+
+    const isInCouple = data.couples.some(
+      (c) => c.person1Id === delPersonId || c.person2Id === delPersonId
+    );
+    const isChild = data.couples.some(
+      (c) => (c.childIds || []).includes(delPersonId)
+    );
+    if (isInCouple || isChild) {
+      showToast(`Cannot delete "${personName}": dweller is part of a couple or registered as a child`, 'error');
+      return;
+    }
+
     if (!await showConfirm(`Are you sure you want to delete "${personName}"?`)) return;
     data.persons = data.persons.filter((p) => p.id !== delPersonId);
-    // Remove from all couples
-    data.couples = data.couples.filter(
-      (c) => c.person1Id !== delPersonId && c.person2Id !== delPersonId
-    );
-    // Remove from childIds
-    data.couples.forEach((c) => {
-      c.childIds = c.childIds.filter((cid) => cid !== delPersonId);
-    });
     refresh();
     showToast('Person deleted');
     return;
@@ -438,6 +513,19 @@ clearBtn.addEventListener('click', async () => {
   showToast('All data cleared');
 });
 
+/* ── Event: Collapse / expand sections ────────────────────── */
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-collapse');
+  if (!btn) return;
+  const target = document.getElementById(btn.dataset.collapseTarget);
+  if (!target) return;
+  const expanded = btn.getAttribute('aria-expanded') === 'true';
+  btn.setAttribute('aria-expanded', String(!expanded));
+  btn.title = expanded ? 'Expand' : 'Collapse';
+  target.classList.toggle('is-collapsed', expanded);
+  btn.closest('.card-header').classList.toggle('no-bottom-margin', expanded);
+});
+
 /* ── Event: Toggle sidebar ────────────────────────────────── */
 function setSidebarCollapsed(collapsed) {
   document.body.classList.toggle('sidebar-hidden', collapsed);
@@ -448,6 +536,25 @@ function setSidebarCollapsed(collapsed) {
 
 sidebarToggleBtn.addEventListener('click', () => {
   setSidebarCollapsed(!document.body.classList.contains('sidebar-hidden'));
+});
+
+/* ── Event: Full screen for tree ─────────────────────────── */
+const treeCard = fullscreenBtn.closest('.card');
+
+fullscreenBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    treeCard.requestFullscreen().catch(() => {
+      showToast('Fullscreen not supported in this browser', 'error');
+    });
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+document.addEventListener('fullscreenchange', () => {
+  const isFs = !!document.fullscreenElement;
+  fullscreenBtn.innerHTML = isFs ? '✕ Exit Full Screen' : '⛶ Full Screen';
+  fullscreenBtn.title = isFs ? 'Exit full screen' : 'View tree in full screen';
 });
 
 /* ── PWA: Register service worker ─────────────────────────── */
