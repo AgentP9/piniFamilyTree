@@ -153,12 +153,17 @@ main {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  position: sticky;
-  top: 82px;
-  max-height: calc(100vh - 98px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+}
+
+@media (min-width: 861px) and (min-height: 900px) {
+  .sidebar {
+    position: sticky;
+    top: 82px;
+    max-height: calc(100vh - 98px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
 }
 
 .content {
