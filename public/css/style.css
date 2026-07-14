@@ -648,7 +648,8 @@ body.sidebar-hidden .sidebar {
   }
 
   .sidebar-toggle {
-    padding-inline: 0.65rem;
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
   }
 }
 

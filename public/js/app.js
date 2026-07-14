@@ -17,6 +17,10 @@ if (typeof mermaid !== 'undefined') {
 
 const GENDER_MALE = 'male';
 const GENDER_FEMALE = 'female';
+const GENDER_LABELS = {
+  [GENDER_MALE]: 'Male',
+  [GENDER_FEMALE]: 'Female'
+};
 
 /* ── App state ────────────────────────────────────────────── */
 let data = Storage.load();
@@ -96,7 +100,7 @@ function oppositeGender(gender) {
 }
 
 function partnerPlaceholder(requiredGender) {
-  const label = requiredGender ? requiredGender.charAt(0).toUpperCase() + requiredGender.slice(1) : '';
+  const label = requiredGender ? GENDER_LABELS[requiredGender] : '';
   return requiredGender
     ? `— Select ${label} dweller —`
     : '— Select dweller —';
@@ -280,7 +284,7 @@ createCoupleForm.addEventListener('submit', (e) => {
   if (p1 === p2)  { showToast('A person cannot be coupled with themselves', 'error'); return; }
   if (!person1 || !person2) { showToast('Please select two existing people', 'error'); return; }
   if (person1.gender === person2.gender) {
-    showToast('Couples must consist of one male and one female dweller. Please adjust your selection.', 'error');
+    showToast('Partner 1 and Partner 2 must be different genders. Please adjust your selection.', 'error');
     return;
   }
 
