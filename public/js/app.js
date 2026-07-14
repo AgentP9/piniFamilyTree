@@ -23,6 +23,9 @@ let legacyIdCounter = 0;
 /* ── DOM refs ─────────────────────────────────────────────── */
 const addPersonForm    = document.getElementById('add-person-form');
 const personNameInput  = document.getElementById('person-name');
+const sidebar          = document.getElementById('sidebar');
+const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+const sidebarToggleLbl = document.getElementById('sidebar-toggle-label');
 const createCoupleForm = document.getElementById('create-couple-form');
 const couplePerson1Sel = document.getElementById('couple-person1');
 const couplePerson2Sel = document.getElementById('couple-person2');
@@ -70,13 +73,29 @@ function genId() {
   return `id-${Date.now().toString(36)}-${legacyIdCounter.toString(36)}`;
 }
 
+function getPerson(id) {
+  return data.persons.find((x) => x.id === id) || null;
+}
+
 function getPersonName(id) {
-  const p = data.persons.find((x) => x.id === id);
+  const p = getPerson(id);
   return p ? p.name : '(unknown)';
 }
 
 function coupleName(couple) {
   return `${getPersonName(couple.person1Id)} ⚭ ${getPersonName(couple.person2Id)}`;
+}
+
+function oppositeGender(gender) {
+  if (gender === 'male') return 'female';
+  if (gender === 'female') return 'male';
+  return '';
+}
+
+function partnerPlaceholder(requiredGender) {
+  return requiredGender
+    ? `— Select ${requiredGender} dweller —`
+    : '— Select dweller —';
 }
 
 /* ── Persist & refresh ────────────────────────────────────── */
@@ -134,22 +153,46 @@ function renderCouplesList() {
 
 /* ── Populate <select> elements ───────────────────────────── */
 function populateSelects() {
-  populatePersonSelect(couplePerson1Sel);
-  populatePersonSelect(couplePerson2Sel);
+  populateCouplePersonSelects();
   populatePersonSelect(childPersonSel);
   populateCoupleSelect(childCoupleSel);
 }
 
-function populatePersonSelect(sel) {
+function populateCouplePersonSelects() {
+  const person1 = getPerson(couplePerson1Sel.value);
+  const person2 = getPerson(couplePerson2Sel.value);
+  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : '';
+  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : '';
+
+  populatePersonSelect(
+    couplePerson1Sel,
+    (person) => !person1RequiredGender || person.gender === person1RequiredGender,
+    partnerPlaceholder(person1RequiredGender)
+  );
+  populatePersonSelect(
+    couplePerson2Sel,
+    (person) => !person2RequiredGender || person.gender === person2RequiredGender,
+    partnerPlaceholder(person2RequiredGender)
+  );
+}
+
+function populatePersonSelect(sel, filterFn = () => true, placeholder = '— Select person —') {
   const current = sel.value;
-  sel.innerHTML = '<option value="">— Select person —</option>';
-  data.persons.forEach((p) => {
+  sel.innerHTML = '';
+
+  const placeholderOpt = document.createElement('option');
+  placeholderOpt.value = '';
+  placeholderOpt.textContent = placeholder;
+  sel.appendChild(placeholderOpt);
+
+  data.persons.filter(filterFn).forEach((p) => {
     const opt = document.createElement('option');
     opt.value = p.id;
     opt.textContent = `${p.gender === 'male' ? '♂' : '♀'} ${p.name}`;
     sel.appendChild(opt);
   });
   sel.value = current;
+  if (sel.value !== current) sel.value = '';
 }
 
 function populateCoupleSelect(sel) {
@@ -223,9 +266,16 @@ createCoupleForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const p1 = couplePerson1Sel.value;
   const p2 = couplePerson2Sel.value;
+  const person1 = getPerson(p1);
+  const person2 = getPerson(p2);
 
   if (!p1 || !p2) { showToast('Please select two people', 'error'); return; }
   if (p1 === p2)  { showToast('A person cannot be coupled with themselves', 'error'); return; }
+  if (!person1 || !person2) { showToast('Please select two existing people', 'error'); return; }
+  if (person1.gender === person2.gender) {
+    showToast('A couple must have one male and one female dweller', 'error');
+    return;
+  }
 
   const duplicate = data.couples.find(
     (c) => (c.person1Id === p1 && c.person2Id === p2) ||
@@ -237,6 +287,14 @@ createCoupleForm.addEventListener('submit', (e) => {
   createCoupleForm.reset();
   refresh();
   showToast('Couple created', 'success');
+});
+
+couplePerson1Sel.addEventListener('change', () => {
+  populateCouplePersonSelects();
+});
+
+couplePerson2Sel.addEventListener('change', () => {
+  populateCouplePersonSelects();
 });
 
 /* ── Event: Add child ─────────────────────────────────────── */
@@ -332,6 +390,18 @@ clearBtn.addEventListener('click', () => {
   data = { persons: [], couples: [] };
   refresh();
   showToast('All data cleared');
+});
+
+/* ── Event: Toggle sidebar ────────────────────────────────── */
+function setSidebarCollapsed(collapsed) {
+  document.body.classList.toggle('sidebar-hidden', collapsed);
+  sidebar.hidden = collapsed;
+  sidebarToggleBtn.setAttribute('aria-expanded', String(!collapsed));
+  sidebarToggleLbl.textContent = collapsed ? 'Show Sidebar' : 'Hide Sidebar';
+}
+
+sidebarToggleBtn.addEventListener('click', () => {
+  setSidebarCollapsed(!document.body.classList.contains('sidebar-hidden'));
 });
 
 /* ── PWA: Register service worker ─────────────────────────── */

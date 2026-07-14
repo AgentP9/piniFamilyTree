@@ -66,8 +66,7 @@ const MermaidGen = (() => {
       if (!p1 || !p2) return;
 
       lines.push(`    ${pairNid}((⚭))`);
-      lines.push(`    ${nodeId(p1.id)} --- ${pairNid}`);
-      lines.push(`    ${nodeId(p2.id)} --- ${pairNid}`);
+      lines.push(`    ${nodeId(p1.id)} --- ${pairNid} --- ${nodeId(p2.id)}`);
 
       const validChildren = (couple.childIds || [])
         .map((cid) => personMap.get(cid))

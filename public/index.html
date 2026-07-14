@@ -18,12 +18,18 @@
     <h1>Fallout Shelter Family Tree</h1>
     <span class="subtitle">🏠 Vault-Tec Dweller Registry</span>
   </div>
-  <div class="header-badge">VAULT 101</div>
+  <div class="header-actions">
+    <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-controls="sidebar" aria-expanded="true">
+      <span aria-hidden="true">🗂️</span>
+      <span id="sidebar-toggle-label" class="sidebar-toggle-text">Hide Sidebar</span>
+    </button>
+    <div class="header-badge">VAULT 101</div>
+  </div>
 </header>
 
 <main>
   <!-- ── Sidebar ─────────────────────────────────────── -->
-  <aside class="sidebar">
+  <aside id="sidebar" class="sidebar">
 
     <!-- Add Person -->
     <section class="card card--add-person">
