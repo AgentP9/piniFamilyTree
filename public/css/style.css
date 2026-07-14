@@ -141,6 +141,12 @@ main {
 
 @media (max-width: 860px) {
   main { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    top: auto;
+    max-height: none;
+    overflow: visible;
+  }
 }
 
 .sidebar {
@@ -607,4 +613,3 @@ main {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
