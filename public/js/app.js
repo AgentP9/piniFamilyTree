@@ -15,6 +15,9 @@ if (typeof mermaid !== 'undefined') {
   });
 }
 
+const GENDER_MALE = 'male';
+const GENDER_FEMALE = 'female';
+
 /* ── App state ────────────────────────────────────────────── */
 let data = Storage.load();
 let renderCounter = 0; // unique IDs for mermaid.render()
@@ -87,8 +90,8 @@ function coupleName(couple) {
 }
 
 function oppositeGender(gender) {
-  if (gender === 'male') return 'female';
-  if (gender === 'female') return 'male';
+  if (gender === GENDER_MALE) return GENDER_FEMALE;
+  if (gender === GENDER_FEMALE) return GENDER_MALE;
   return null;
 }
 
@@ -124,7 +127,7 @@ function renderPersonsList() {
     const chip = document.createElement('span');
     chip.className = `person-chip ${p.gender}`;
     chip.innerHTML = `
-      ${p.gender === 'male' ? '♂' : '♀'} ${escapeHtml(p.name)}
+      ${p.gender === GENDER_MALE ? '♂' : '♀'} ${escapeHtml(p.name)}
       <button class="btn-icon" title="Delete ${escapeHtml(p.name)}" data-delete-person="${p.id}">✕</button>
     `;
     personsList.appendChild(chip);
@@ -190,7 +193,7 @@ function populatePersonSelect(sel, filterFn = () => true, placeholder = '— Sel
   filteredPersons.forEach((p) => {
     const opt = document.createElement('option');
     opt.value = p.id;
-    opt.textContent = `${p.gender === 'male' ? '♂' : '♀'} ${p.name}`;
+    opt.textContent = `${p.gender === GENDER_MALE ? '♂' : '♀'} ${p.name}`;
     sel.appendChild(opt);
   });
   // Reset the selection when the current value is no longer valid under the
@@ -277,7 +280,7 @@ createCoupleForm.addEventListener('submit', (e) => {
   if (p1 === p2)  { showToast('A person cannot be coupled with themselves', 'error'); return; }
   if (!person1 || !person2) { showToast('Please select two existing people', 'error'); return; }
   if (person1.gender === person2.gender) {
-    showToast('A couple must have one male and one female dweller', 'error');
+    showToast('Couples must consist of one male and one female dweller. Please adjust your selection.', 'error');
     return;
   }
 
