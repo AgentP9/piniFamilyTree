@@ -5,11 +5,15 @@
  */
 
 /* ── Mermaid initialisation ───────────────────────────────── */
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'dark',
-  flowchart: { curve: 'basis', useMaxWidth: true }
-});
+// Guard: if the CDN failed to load the mermaid global, the rest of the app
+// (CRUD, persistence, lists) still works; the diagram area shows a warning.
+if (typeof mermaid !== 'undefined') {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'dark',
+    flowchart: { curve: 'basis', useMaxWidth: true }
+  });
+}
 
 /* ── App state ────────────────────────────────────────────── */
 let data = Storage.load();
@@ -155,7 +159,16 @@ async function renderDiagram() {
   if (!code) {
     mermaidDiagram.innerHTML = `
       <div class="empty-state">
-        <p>Add people and create couples to see the family tree</p>
+        <p>🏠 Add dwellers and form couples to grow your vault family tree!</p>
+      </div>`;
+    return;
+  }
+
+  if (typeof mermaid === 'undefined') {
+    mermaidDiagram.innerHTML = `
+      <div class="empty-state">
+        ⚠️ Diagram library not loaded — check your internet connection.<br>
+        <small>The Mermaid source is still available below.</small>
       </div>`;
     return;
   }
