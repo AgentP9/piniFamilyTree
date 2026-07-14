@@ -26,9 +26,8 @@ const Storage = (() => {
   function save(data) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      return true;
-    } catch (_) {
-      return false;
+    } catch (err) {
+      console.warn('Unable to persist data to localStorage', err);
     }
   }
 
