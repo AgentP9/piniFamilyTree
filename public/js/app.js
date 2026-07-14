@@ -89,7 +89,7 @@ function coupleName(couple) {
 function oppositeGender(gender) {
   if (gender === 'male') return 'female';
   if (gender === 'female') return 'male';
-  return '';
+  return null;
 }
 
 function partnerPlaceholder(requiredGender) {
@@ -161,8 +161,8 @@ function populateSelects() {
 function populateCouplePersonSelects() {
   const person1 = getPerson(couplePerson1Sel.value);
   const person2 = getPerson(couplePerson2Sel.value);
-  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : '';
-  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : '';
+  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : null;
+  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : null;
 
   populatePersonSelect(
     couplePerson1Sel,
@@ -192,6 +192,8 @@ function populatePersonSelect(sel, filterFn = () => true, placeholder = '— Sel
     sel.appendChild(opt);
   });
   sel.value = current;
+  // Reset the selection when the current value is no longer valid under the
+  // active gender filter so the form cannot keep a stale, incompatible pair.
   if (sel.value !== current) sel.value = '';
 }
 
