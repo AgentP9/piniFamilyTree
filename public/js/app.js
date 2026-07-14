@@ -339,6 +339,8 @@ addChildForm.addEventListener('submit', (e) => {
 document.addEventListener('click', (e) => {
   const delPersonId = e.target.dataset.deletePerson;
   if (delPersonId) {
+    const personName = getPersonName(delPersonId);
+    if (!confirm(`Are you sure you want to delete "${personName}"?`)) return;
     data.persons = data.persons.filter((p) => p.id !== delPersonId);
     // Remove from all couples
     data.couples = data.couples.filter(
@@ -355,6 +357,7 @@ document.addEventListener('click', (e) => {
 
   const delCoupleId = e.target.dataset.deleteCouple;
   if (delCoupleId) {
+    if (!confirm('Are you sure you want to delete this couple?')) return;
     data.couples = data.couples.filter((c) => c.id !== delCoupleId);
     refresh();
     showToast('Couple deleted');
