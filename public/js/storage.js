@@ -24,7 +24,12 @@ const Storage = (() => {
   }
 
   function save(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   function exportJSON(data) {
