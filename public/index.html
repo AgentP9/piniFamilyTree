@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f0c040">
+  <meta name="description" content="Fallout Shelter Family Tree Visualizer">
+  <title>Fallout Shelter Family Tree</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <img src="icons/icon.svg" alt="logo" class="logo">
+  <div class="header-text">
+    <h1>Fallout Shelter Family Tree</h1>
+    <span class="subtitle">🏠 Vault-Tec Dweller Registry</span>
+  </div>
+  <div class="header-actions">
+    <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-controls="sidebar" aria-expanded="true">
+      <span aria-hidden="true">🗂️</span>
+      <span id="sidebar-toggle-label" class="sidebar-toggle-text">Hide Sidebar</span>
+    </button>
+    <div class="header-badge">VAULT 101</div>
+  </div>
+</header>
+
+<main>
+  <!-- ── Sidebar ─────────────────────────────────────── -->
+  <aside id="sidebar" class="sidebar">
+
+    <!-- Add Person -->
+    <section class="card card--add-person">
+      <h2>👤 New Dweller</h2>
+      <form id="add-person-form" autocomplete="off">
+        <div class="form-group">
+          <label for="person-name">Name</label>
+          <input type="text" id="person-name" placeholder="e.g. Jason Allen" required maxlength="60">
+        </div>
+        <div class="form-group">
+          <label>Gender</label>
+          <div class="radio-group">
+            <label class="radio-label radio-label--male">
+              <input type="radio" name="gender" value="male" checked>
+              <span>♂ Male</span>
+            </label>
+            <label class="radio-label radio-label--female">
+              <input type="radio" name="gender" value="female">
+              <span>♀ Female</span>
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">＋ Add Dweller</button>
+      </form>
+    </section>
+
+    <!-- Create Couple -->
+    <section class="card card--couple">
+      <h2>⚭ Form a Couple</h2>
+      <form id="create-couple-form">
+        <div class="form-group">
+          <label for="couple-person1">Partner 1</label>
+          <select id="couple-person1" required>
+            <option value="">— Select dweller —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="couple-person2">Partner 2</label>
+          <select id="couple-person2" required>
+            <option value="">— Select dweller —</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-couple">⚭ Unite!</button>
+      </form>
+    </section>
+
+    <!-- Add Child -->
+    <section class="card card--child">
+      <h2>👶 Register Child</h2>
+      <form id="add-child-form">
+        <div class="form-group">
+          <label for="child-couple">Parents</label>
+          <select id="child-couple" required>
+            <option value="">— Select couple —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="child-person">Child</label>
+          <select id="child-person" required>
+            <option value="">— Select dweller —</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-child">👶 Register!</button>
+      </form>
+    </section>
+
+    <!-- Data management -->
+    <section class="card card--data">
+      <h2>💾 Vault Records</h2>
+      <div class="button-group">
+        <button id="export-btn" class="btn btn-secondary">📤 Export JSON</button>
+        <button id="import-btn" class="btn btn-secondary">📥 Import JSON</button>
+        <button id="clear-btn" class="btn btn-danger">☢️ Wipe All Data</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none">
+    </section>
+
+  </aside>
+
+  <!-- ── Main content ─────────────────────────────────── -->
+  <div class="content">
+
+    <!-- People -->
+    <section class="card">
+      <h2>🧑‍🤝‍🧑 Dwellers <span class="count-badge" id="persons-count">0</span></h2>
+      <div id="persons-list" class="person-list"></div>
+    </section>
+
+    <!-- Couples -->
+    <section class="card">
+      <h2>💑 Couples <span class="count-badge" id="couples-count">0</span></h2>
+      <div id="couples-list" class="couple-list"></div>
+    </section>
+
+    <!-- Family tree diagram -->
+    <section class="card">
+      <div class="tree-header">
+        <h2>🌳 Family Tree</h2>
+        <div class="tree-controls">
+          <button id="copy-mermaid-btn" class="btn btn-secondary" title="Copy Mermaid source">
+            📋 Copy Code
+          </button>
+        </div>
+      </div>
+
+      <div id="mermaid-diagram" class="mermaid-container">
+        <div class="empty-state">
+          <div class="empty-state-icon">🏠</div>
+          <p>Add dwellers and form couples to grow your vault family tree!</p>
+        </div>
+      </div>
+
+      <details class="code-block">
+        <summary>📄 Mermaid source</summary>
+        <pre id="mermaid-code"></pre>
+      </details>
+    </section>
+
+  </div>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- Confirm modal -->
+<div id="confirm-modal" class="confirm-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-message">
+  <div class="confirm-modal-box">
+    <div class="confirm-modal-icon">⚠️</div>
+    <p id="confirm-modal-message" class="confirm-modal-message"></p>
+    <div class="confirm-modal-actions">
+      <button id="confirm-modal-cancel"  class="btn btn-secondary">Cancel</button>
+      <button id="confirm-modal-confirm" class="btn btn-danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/mermaid-gen.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#1a1a2e"/>
+  <!-- Tree trunk -->
+  <rect x="236" y="330" width="40" height="120" rx="8" fill="#8b6914"/>
+  <!-- Tree layers -->
+  <polygon points="256,60 160,220 352,220" fill="#2ecc71"/>
+  <polygon points="256,120 145,290 367,290" fill="#27ae60"/>
+  <polygon points="256,180 130,360 382,360" fill="#1e8449"/>
+  <!-- Couple symbol -->
+  <circle cx="174" cy="160" r="22" fill="none" stroke="#4fc3f7" stroke-width="8"/>
+  <circle cx="338" cy="160" r="22" fill="none" stroke="#f48fb1" stroke-width="8"/>
+  <line x1="196" y1="160" x2="316" y2="160" stroke="#f5a623" stroke-width="6" stroke-linecap="round"/>
+</svg>
