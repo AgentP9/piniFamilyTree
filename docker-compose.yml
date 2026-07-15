@@ -1,6 +1,18 @@
 services:
+  api:
+    build:
+      context: ./server
+    volumes:
+      - family-tree-data:/data
+    restart: unless-stopped
+
   app:
     build: .
     ports:
       - "3939:80"
+    depends_on:
+      - api
     restart: unless-stopped
+
+volumes:
+  family-tree-data:

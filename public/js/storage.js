@@ -1,124 +1,111 @@
 /**
- * storage.js — persistent localStorage layer for the family tree.
+ * storage.js — API-backed persistent storage for the family tree.
  *
- * Schema:
- *   piniFamilyTree-vaults         : ["13","101","76", …]   // sorted list of vault numbers
- *   piniFamilyTree-activeVault    : "101"                  // last active vault
- *   piniFamilyTree-vault-{number} : { persons, couples }   // per-vault data
+ * All data is stored server-side in a Docker volume via a REST API.
+ * Every public method returns a Promise.
  *
- * Legacy key "piniFamilyTree" (single-vault era) is migrated to vault 101
- * on first load if no vault list exists yet.
+ * API base: /api
+ *   GET  /api/vaults            → { vaults: ["1",…], activeVault: "101" }
+ *   POST /api/vaults            → { created: true/false }
+ *   GET  /api/active-vault      → { activeVault }
+ *   PUT  /api/active-vault      → { ok: true }
+ *   GET  /api/vault/:id         → { persons, couples }
+ *   PUT  /api/vault/:id         → { ok: true }
  */
-
-const _VAULT_LIST_KEY   = 'piniFamilyTree-vaults';
-const _ACTIVE_VAULT_KEY = 'piniFamilyTree-activeVault';
-const _LEGACY_KEY       = 'piniFamilyTree';
 
 const Storage = (() => {
 
-  /* ── Internal helpers ─────────────────────────────────────── */
+  const API = '/api';
 
-  function _vaultDataKey(vaultNumber) {
-    return `piniFamilyTree-vault-${vaultNumber}`;
+  /* ── Internal fetch helpers ───────────────────────────────── */
+
+  async function _get(path) {
+    const res = await fetch(`${API}${path}`);
+    if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
+    return res.json();
   }
 
-  function _saveVaultList(vaults) {
-    localStorage.setItem(_VAULT_LIST_KEY, JSON.stringify(vaults));
+  async function _post(path, body) {
+    const res = await fetch(`${API}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`API error ${res.status}: POST ${path}`);
+    return res.json();
+  }
+
+  async function _put(path, body) {
+    const res = await fetch(`${API}${path}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`API error ${res.status}: PUT ${path}`);
+    return res.json();
   }
 
   /* ── Vault registry ───────────────────────────────────────── */
 
   /** Returns the sorted array of registered vault numbers (as strings). */
-  function getVaults() {
-    try {
-      const raw = localStorage.getItem(_VAULT_LIST_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (_) { /* ignore */ }
-    return [];
+  async function getVaults() {
+    const meta = await _get('/vaults');
+    return meta.vaults || [];
   }
 
   /**
-   * Register a new vault number.  If it already exists this is a no-op.
+   * Register a new vault number.
    * Returns true when a new entry was added, false when it already existed.
    */
-  function createVault(vaultNumber) {
-    const vaults = getVaults();
-    const num = String(vaultNumber);
-    if (vaults.includes(num)) return false;
-    vaults.push(num);
-    vaults.sort((a, b) => Number(a) - Number(b));
-    _saveVaultList(vaults);
-    return true;
+  async function createVault(vaultNumber) {
+    const result = await _post('/vaults', { vaultNumber });
+    return result.created;
   }
 
   /** Returns the vault number (string) that was active in the last session, or null. */
-  function getActiveVault() {
-    return localStorage.getItem(_ACTIVE_VAULT_KEY);
+  async function getActiveVault() {
+    const result = await _get('/active-vault');
+    return result.activeVault || null;
   }
 
   /** Persist the currently active vault so it is restored on next load. */
-  function setActiveVault(vaultNumber) {
-    localStorage.setItem(_ACTIVE_VAULT_KEY, String(vaultNumber));
+  async function setActiveVault(vaultNumber) {
+    await _put('/active-vault', { vaultNumber });
   }
 
   /**
-   * One-time migration: if legacy data (stored under the old single-vault key)
-   * exists and no vault list has been created yet, move that data to vault 101
-   * and return '101'.  Returns null when no migration is necessary.
+   * No-op: legacy localStorage migration is not applicable when data lives in
+   * a Docker volume.  Always returns null.
    */
-  function migrateLegacyData() {
-    if (getVaults().length > 0) return null; // already on the new schema
-    try {
-      const raw = localStorage.getItem(_LEGACY_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.persons) || Array.isArray(parsed.couples)) {
-          localStorage.setItem(_vaultDataKey('101'), raw);
-          localStorage.removeItem(_LEGACY_KEY);
-          createVault('101');
-          setActiveVault('101');
-          return '101';
-        }
-      }
-    } catch (_) { /* ignore corrupt data */ }
+  async function migrateLegacyData() {
     return null;
   }
 
   /* ── Data load / save ─────────────────────────────────────── */
 
   /** Load the data for a specific vault.  Returns { persons, couples }. */
-  function load(vaultNumber) {
+  async function load(vaultNumber) {
     try {
-      const raw = localStorage.getItem(_vaultDataKey(vaultNumber));
-      if (raw) {
-        const d = JSON.parse(raw);
-        return {
-          persons: Array.isArray(d.persons) ? d.persons : [],
-          couples: Array.isArray(d.couples) ? d.couples : []
-        };
-      }
-    } catch (_) { /* ignore corrupt data */ }
-    return { persons: [], couples: [] };
+      return await _get(`/vault/${vaultNumber}`);
+    } catch (_) {
+      return { persons: [], couples: [] };
+    }
   }
 
   /** Persist the data object for a specific vault. */
-  function save(vaultNumber, d) {
-    try {
-      localStorage.setItem(_vaultDataKey(vaultNumber), JSON.stringify(d));
-    } catch (err) {
-      console.warn('Unable to persist data to localStorage', err);
-    }
+  async function save(vaultNumber, d) {
+    await _put(`/vault/${vaultNumber}`, { persons: d.persons, couples: d.couples });
   }
 
   /* ── Export / Import ──────────────────────────────────────── */
 
   function exportJSON(vaultNumber, d) {
     const payload = { vaultNumber: String(vaultNumber), persons: d.persons, couples: d.couples };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `vault-${vaultNumber}-family-tree.json`;
+    const blob    = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url     = URL.createObjectURL(blob);
+    const a       = document.createElement('a');
+    a.href        = url;
+    a.download    = `vault-${vaultNumber}-family-tree.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
