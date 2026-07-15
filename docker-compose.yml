@@ -1,5 +1,6 @@
 services:
-  api:
+  storage:
+    container_name: vault-storage
     build:
       context: ./server
     volumes:
@@ -7,6 +8,7 @@ services:
     restart: unless-stopped
 
   app:
+    container_name: vault-app
     build: .
     ports:
       - "3939:80"
