@@ -35,6 +35,10 @@
   --couple:    #fb923c;
   --couple-bg: rgba(251, 146, 60, 0.14);
 
+  /* sibling */
+  --sibling:    #a855f7;
+  --sibling-bg: rgba(168, 85, 247, 0.14);
+
   /* status */
   --success: #4ade80;
   --danger:  #f87171;
@@ -234,6 +238,7 @@ body.sidebar-hidden .sidebar {
 .card--add-person::before { background: linear-gradient(90deg, var(--male), var(--female)); }
 .card--couple::before     { background: var(--couple); }
 .card--child::before      { background: var(--pip); }
+.card--siblings::before   { background: var(--sibling); }
 .card--data::before       { background: var(--text-muted); }
 
 .card h2 {
@@ -394,6 +399,18 @@ body.sidebar-hidden .sidebar {
   transform: translateY(-1px);
 }
 
+.btn-sibling {
+  background: linear-gradient(135deg, var(--sibling), #7c3aed);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.35);
+}
+
+.btn-sibling:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5);
+  transform: translateY(-1px);
+}
+
 .btn-secondary {
   background: var(--surface2);
   color: var(--text);
@@ -525,6 +542,36 @@ body.sidebar-hidden .sidebar {
   border-radius: 10px;
   padding: 0.1rem 0.45rem;
   border: 1px solid var(--border);
+}
+
+/* ---------- sibling group list & chips ---------- */
+.sibling-group-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  min-height: 2.5rem;
+  align-items: flex-start;
+  align-content: flex-start;
+}
+
+.sibling-group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 0.5rem 0.38rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: var(--sibling-bg);
+  border: 1.5px solid rgba(168, 85, 247, 0.4);
+  color: var(--text);
+  animation: chip-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.sibling-group-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.25);
 }
 
 /* ---------- tree section ---------- */

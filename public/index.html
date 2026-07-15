@@ -96,6 +96,26 @@
       </form>
     </section>
 
+    <!-- Link Siblings -->
+    <section class="card card--siblings">
+      <h2>🤝 Link Siblings</h2>
+      <form id="link-siblings-form">
+        <div class="form-group">
+          <label for="sibling-person1">Sibling 1</label>
+          <select id="sibling-person1" required>
+            <option value="">— Select dweller —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="sibling-person2">Sibling 2</label>
+          <select id="sibling-person2" required>
+            <option value="">— Select dweller —</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-sibling">🤝 Link!</button>
+      </form>
+    </section>
+
     <!-- Data management -->
     <section class="card card--data">
       <h2>💾 Vault Records</h2>
@@ -128,6 +148,15 @@
         <button class="btn-collapse" aria-expanded="true" data-collapse-target="couples-list" title="Collapse">▾</button>
       </div>
       <div id="couples-list" class="couple-list"></div>
+    </section>
+
+    <!-- Sibling Links -->
+    <section class="card">
+      <div class="card-header">
+        <h2>🤝 Sibling Links <span class="count-badge" id="sibling-groups-count">0</span></h2>
+        <button class="btn-collapse" aria-expanded="true" data-collapse-target="sibling-groups-list" title="Collapse">▾</button>
+      </div>
+      <div id="sibling-groups-list" class="sibling-group-list"></div>
     </section>
 
     <!-- Family tree diagram -->

@@ -30,6 +30,7 @@ const MermaidGen = (() => {
    */
   function generate(data) {
     const { persons, couples } = data;
+    const siblingGroups = data.siblingGroups || [];
     if (persons.length === 0) return '';
 
     const personMap = new Map(persons.map((p) => [p.id, p]));
@@ -48,9 +49,10 @@ const MermaidGen = (() => {
 
     if (maleIds.length > 0 || femaleIds.length > 0) {
       lines.push('');
-      lines.push('    classDef male   fill:#1a3a4a,stroke:#4fc3f7,color:#cceeff');
-      lines.push('    classDef female fill:#3a1a2a,stroke:#f48fb1,color:#ffe0ee');
-      lines.push('    classDef pair   fill:#1a1a3a,stroke:#6c63ff,color:#ccccff,shape:circle');
+      lines.push('    classDef male    fill:#1a3a4a,stroke:#4fc3f7,color:#cceeff');
+      lines.push('    classDef female  fill:#3a1a2a,stroke:#f48fb1,color:#ffe0ee');
+      lines.push('    classDef pair    fill:#1a1a3a,stroke:#6c63ff,color:#ccccff,shape:circle');
+      lines.push('    classDef sibling fill:#2a1a3a,stroke:#a855f7,color:#e9d5ff');
     }
 
     if (maleIds.length > 0)   lines.push(`    class ${maleIds.join(',')} male`);
@@ -84,6 +86,29 @@ const MermaidGen = (() => {
 
       lines.push('');
     });
+
+    // ── sibling-group nodes & edges ───────────────────────────
+    const validSibNids = [];
+    siblingGroups.forEach((group, i) => {
+      const sibNid = `SibGroup${i + 1}`;
+      const validMembers = (group.personIds || [])
+        .map((id) => personMap.get(id))
+        .filter(Boolean);
+
+      if (validMembers.length < 2) return;
+
+      validSibNids.push(sibNid);
+      lines.push(`    ${sibNid}{{"👥"}}`);
+      validMembers.forEach((member) => {
+        lines.push(`    ${nodeId(member.id)} -.- ${sibNid}`);
+      });
+      lines.push('');
+    });
+
+    if (validSibNids.length > 0) {
+      lines.push(`    class ${validSibNids.join(',')} sibling`);
+      lines.push('');
+    }
 
     return lines.join('\n');
   }

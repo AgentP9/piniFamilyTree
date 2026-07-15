@@ -9,7 +9,7 @@
  *   POST /api/vaults            → { created: true/false }
  *   GET  /api/active-vault      → { activeVault }
  *   PUT  /api/active-vault      → { ok: true }
- *   GET  /api/vault/:id         → { persons, couples }
+ *   GET  /api/vault/:id         → { persons, couples, siblingGroups }
  *   PUT  /api/vault/:id         → { ok: true }
  */
 
@@ -83,24 +83,38 @@ const Storage = (() => {
 
   /* ── Data load / save ─────────────────────────────────────── */
 
-  /** Load the data for a specific vault.  Returns { persons, couples }. */
+  /** Load the data for a specific vault.  Returns { persons, couples, siblingGroups }. */
   async function load(vaultNumber) {
     try {
-      return await _get(`/vault/${vaultNumber}`);
+      const d = await _get(`/vault/${vaultNumber}`);
+      return {
+        persons:       Array.isArray(d.persons)       ? d.persons       : [],
+        couples:       Array.isArray(d.couples)       ? d.couples       : [],
+        siblingGroups: Array.isArray(d.siblingGroups) ? d.siblingGroups : []
+      };
     } catch (_) {
-      return { persons: [], couples: [] };
+      return { persons: [], couples: [], siblingGroups: [] };
     }
   }
 
   /** Persist the data object for a specific vault. */
   async function save(vaultNumber, d) {
-    await _put(`/vault/${vaultNumber}`, { persons: d.persons, couples: d.couples });
+    await _put(`/vault/${vaultNumber}`, {
+      persons:       d.persons,
+      couples:       d.couples,
+      siblingGroups: d.siblingGroups || []
+    });
   }
 
   /* ── Export / Import ──────────────────────────────────────── */
 
   function exportJSON(vaultNumber, d) {
-    const payload = { vaultNumber: String(vaultNumber), persons: d.persons, couples: d.couples };
+    const payload = {
+      vaultNumber:   String(vaultNumber),
+      persons:       d.persons,
+      couples:       d.couples,
+      siblingGroups: d.siblingGroups || []
+    };
     const blob    = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url     = URL.createObjectURL(blob);
     const a       = document.createElement('a');
@@ -120,7 +134,11 @@ const Storage = (() => {
             reject(new Error('Invalid file format'));
             return;
           }
-          resolve(d);
+          resolve({
+            persons:       d.persons,
+            couples:       d.couples,
+            siblingGroups: Array.isArray(d.siblingGroups) ? d.siblingGroups : []
+          });
         } catch (_) {
           reject(new Error('Could not parse JSON file'));
         }

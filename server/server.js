@@ -6,15 +6,15 @@
  *
  * Layout:
  *   /data/meta.json          — { vaults: ["1","2",…], activeVault: "101" }
- *   /data/vault-{number}.json — { persons: […], couples: […] }
+ *   /data/vault-{number}.json — { persons: […], couples: […], siblingGroups: […] }
  *
  * Endpoints
  *   GET  /api/vaults           → { vaults, activeVault }
  *   POST /api/vaults           → { created: true/false }   body: { vaultNumber }
  *   GET  /api/active-vault     → { activeVault }
  *   PUT  /api/active-vault     → { ok: true }              body: { vaultNumber }
- *   GET  /api/vault/:id        → { persons, couples }
- *   PUT  /api/vault/:id        → { ok: true }              body: { persons, couples }
+ *   GET  /api/vault/:id        → { persons, couples, siblingGroups }
+ *   PUT  /api/vault/:id        → { ok: true }              body: { persons, couples, siblingGroups }
  */
 
 'use strict';
@@ -67,11 +67,12 @@ function readVault(id) {
     const raw = fs.readFileSync(vaultFile(id), 'utf8');
     const d   = JSON.parse(raw);
     return {
-      persons: Array.isArray(d.persons) ? d.persons : [],
-      couples: Array.isArray(d.couples) ? d.couples : []
+      persons:       Array.isArray(d.persons)       ? d.persons       : [],
+      couples:       Array.isArray(d.couples)       ? d.couples       : [],
+      siblingGroups: Array.isArray(d.siblingGroups) ? d.siblingGroups : []
     };
   } catch (_) {
-    return { persons: [], couples: [] };
+    return { persons: [], couples: [], siblingGroups: [] };
   }
 }
 
@@ -173,8 +174,9 @@ async function handleRequest(req, res) {
     if (method === 'PUT') {
       const body = await readBody(req);
       writeVault(id, {
-        persons: Array.isArray(body.persons) ? body.persons : [],
-        couples: Array.isArray(body.couples) ? body.couples : []
+        persons:       Array.isArray(body.persons)       ? body.persons       : [],
+        couples:       Array.isArray(body.couples)       ? body.couples       : [],
+        siblingGroups: Array.isArray(body.siblingGroups) ? body.siblingGroups : []
       });
       send(res, 200, { ok: true });
       return;
