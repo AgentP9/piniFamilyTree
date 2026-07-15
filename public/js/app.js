@@ -617,7 +617,7 @@ async function renderVaultList() {
   for (const num of vaults) {
     const vd  = await Storage.load(num);
     const btn = document.createElement('button');
-    btn.type      = 'button';
+    btn.type = 'button';
     btn.className = `vault-item${num === currentVault ? ' vault-item--active' : ''}`;
     btn.innerHTML = `
       <span class="vault-item-name">VAULT ${escapeHtml(num)}</span>
