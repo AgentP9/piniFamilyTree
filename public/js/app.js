@@ -72,6 +72,10 @@ const vaultCreateForm  = document.getElementById('vault-create-form');
 const vaultNumberInput = document.getElementById('vault-number-input');
 const vaultModalClose  = document.getElementById('vault-modal-close');
 
+/* ── Searchable selects ───────────────────────────────────── */
+[couplePerson1Sel, couplePerson2Sel, childCoupleSel, childPersonSel,
+  siblingPerson1Sel, siblingPerson2Sel].forEach((sel) => new SearchableSelect(sel));
+
 /* ── Toast notification ───────────────────────────────────── */
 let toastTimer = null;
 function showToast(msg, type = 'info') {

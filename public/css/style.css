@@ -306,6 +306,102 @@ body.sidebar-hidden .sidebar {
   background: var(--surface2);
 }
 
+/* ---------- searchable select (ss-*) ---------- */
+.ss-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.ss-input {
+  width: 100%;
+  padding: 0.6rem 2.2rem 0.6rem 0.85rem; /* right padding for the chevron */
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  cursor: pointer;
+}
+
+.ss-input::placeholder {
+  color: var(--text-muted);
+}
+
+.ss-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  cursor: text;
+}
+
+/* Chevron icon via a pseudo-element on the wrapper */
+.ss-wrapper::after {
+  content: '▾';
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  pointer-events: none;
+  transition: transform var(--transition), color var(--transition);
+}
+
+.ss-wrapper--open::after {
+  transform: translateY(-50%) rotate(180deg);
+  color: var(--accent);
+}
+
+.ss-listbox {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface3);
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 500;
+  padding: 0.3rem 0;
+}
+
+.ss-option {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.88rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ss-option:hover,
+.ss-option--active {
+  background: var(--surface2);
+  color: var(--accent);
+}
+
+.ss-option--selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.ss-option--placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.ss-option--empty {
+  color: var(--text-muted);
+  font-style: italic;
+  cursor: default;
+}
+
 /* ---------- radio gender toggle ---------- */
 .radio-group {
   display: flex;
