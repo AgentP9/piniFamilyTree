@@ -43,10 +43,10 @@ const MermaidGen = (() => {
 
     if (maleIds.length > 0 || femaleIds.length > 0) {
       lines.push('');
-      lines.push('    classDef male    fill:#172633,stroke:#5cc8ff,color:#e8f7ff');
-      lines.push('    classDef female  fill:#2a1d2b,stroke:#ff9ac6,color:#fff0f7');
-      lines.push('    classDef pair    fill:#25212d,stroke:#f3c969,color:#fff3cf,shape:circle');
-      lines.push('    classDef sibling fill:#211a35,stroke:#b388ff,color:#f1e7ff');
+      lines.push('    classDef male    fill:#23445c,stroke:#75d7ff,color:#f2fbff');
+      lines.push('    classDef female  fill:#5a2b46,stroke:#ff8fc8,color:#fff6fb');
+      lines.push('    classDef pair    fill:#3b3243,stroke:#f3c969,color:#fff3cf,shape:circle');
+      lines.push('    classDef sibling fill:#352450,stroke:#c39bff,color:#f5edff');
     }
 
     if (maleIds.length > 0)   lines.push(`    class ${maleIds.join(',')} male`);
