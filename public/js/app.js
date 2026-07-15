@@ -23,7 +23,8 @@ const GENDER_LABELS = {
 };
 
 /* ── App state ────────────────────────────────────────────── */
-let data = Storage.load();
+let currentVault = null;
+let data = { persons: [], couples: [] };
 let renderCounter = 0; // unique IDs for mermaid.render()
 let legacyIdCounter = 0;
 
@@ -39,6 +40,7 @@ const couplePerson2Sel = document.getElementById('couple-person2');
 const addChildForm     = document.getElementById('add-child-form');
 const childCoupleSel   = document.getElementById('child-couple');
 const childPersonSel   = document.getElementById('child-person');
+const fullscreenBtn    = document.getElementById('fullscreen-btn');
 
 const personsList      = document.getElementById('persons-list');
 const couplesList      = document.getElementById('couples-list');
@@ -57,6 +59,13 @@ const confirmModal     = document.getElementById('confirm-modal');
 const confirmModalMsg  = document.getElementById('confirm-modal-message');
 const confirmModalOk   = document.getElementById('confirm-modal-confirm');
 const confirmModalCancel = document.getElementById('confirm-modal-cancel');
+
+const vaultBadge       = document.getElementById('vault-badge');
+const vaultModal       = document.getElementById('vault-modal');
+const vaultListEl      = document.getElementById('vault-list');
+const vaultCreateForm  = document.getElementById('vault-create-form');
+const vaultNumberInput = document.getElementById('vault-number-input');
+const vaultModalClose  = document.getElementById('vault-modal-close');
 
 /* ── Toast notification ───────────────────────────────────── */
 let toastTimer = null;
@@ -140,7 +149,10 @@ function partnerPlaceholder(requiredGender) {
 
 /* ── Persist & refresh ────────────────────────────────────── */
 function save() {
-  Storage.save(data);
+  Storage.save(currentVault, data).catch((err) => {
+    console.warn('Failed to persist data:', err);
+    showToast('Failed to save data to server', 'error');
+  });
 }
 
 function refresh() {
@@ -194,7 +206,17 @@ function renderCouplesList() {
 /* ── Populate <select> elements ───────────────────────────── */
 function populateSelects() {
   populateCouplePersonSelects();
-  populatePersonSelect(childPersonSel);
+
+  // Child dropdown: only free dwellers (not already a child, not in any couple)
+  const childrenIds  = new Set(data.couples.flatMap((c) => c.childIds || []));
+  const coupledIds   = new Set(data.couples.flatMap((c) => [c.person1Id, c.person2Id]));
+  const occupiedIds  = new Set([...childrenIds, ...coupledIds]);
+  populatePersonSelect(
+    childPersonSel,
+    (person) => !occupiedIds.has(person.id),
+    '— Select dweller —'
+  );
+
   populateCoupleSelect(childCoupleSel);
 }
 
@@ -204,14 +226,34 @@ function populateCouplePersonSelects() {
   const person1RequiredGender = person2 ? oppositeGender(person2.gender) : null;
   const person2RequiredGender = person1 ? oppositeGender(person1.gender) : null;
 
+  // Pre-compute relationship sets to avoid redundant graph traversal per candidate
+  const p1Ancestors   = person1 ? getAncestors(person1.id)   : new Set();
+  const p1Descendants = person1 ? getDescendants(person1.id) : new Set();
+  const p1Siblings    = person1 ? getSiblings(person1.id)    : new Set();
+  const p2Ancestors   = person2 ? getAncestors(person2.id)   : new Set();
+  const p2Descendants = person2 ? getDescendants(person2.id) : new Set();
+  const p2Siblings    = person2 ? getSiblings(person2.id)    : new Set();
+
   populatePersonSelect(
     couplePerson1Sel,
-    (person) => !person1RequiredGender || person.gender === person1RequiredGender,
+    (person) => {
+      if (person1RequiredGender && person.gender !== person1RequiredGender) return false;
+      if (!person2) return true;
+      return !p2Ancestors.has(person.id) &&
+             !p2Descendants.has(person.id) &&
+             !p2Siblings.has(person.id);
+    },
     partnerPlaceholder(person1RequiredGender)
   );
   populatePersonSelect(
     couplePerson2Sel,
-    (person) => !person2RequiredGender || person.gender === person2RequiredGender,
+    (person) => {
+      if (person2RequiredGender && person.gender !== person2RequiredGender) return false;
+      if (!person1) return true;
+      return !p1Ancestors.has(person.id) &&
+             !p1Descendants.has(person.id) &&
+             !p1Siblings.has(person.id);
+    },
     partnerPlaceholder(person2RequiredGender)
   );
 }
@@ -281,6 +323,68 @@ async function renderDiagram() {
   }
 }
 
+/* ── Family-graph helpers ─────────────────────────────────── */
+
+/** Returns a Set of all ancestor IDs (parents, grandparents, …) of personId. */
+function getAncestors(personId) {
+  const ancestors = new Set();
+  function walk(id) {
+    if (ancestors.has(id)) return;
+    ancestors.add(id);
+    data.couples.forEach((c) => {
+      if ((c.childIds || []).includes(id)) {
+        walk(c.person1Id);
+        walk(c.person2Id);
+      }
+    });
+  }
+  data.couples.forEach((c) => {
+    if ((c.childIds || []).includes(personId)) {
+      walk(c.person1Id);
+      walk(c.person2Id);
+    }
+  });
+  return ancestors;
+}
+
+/** Returns a Set of all descendant IDs (children, grandchildren, …) of personId. */
+function getDescendants(personId) {
+  const descendants = new Set();
+  function walk(id) {
+    if (descendants.has(id)) return;
+    descendants.add(id);
+    data.couples.forEach((c) => {
+      if (c.person1Id === id || c.person2Id === id) {
+        (c.childIds || []).forEach((childId) => walk(childId));
+      }
+    });
+  }
+  data.couples.forEach((c) => {
+    if (c.person1Id === personId || c.person2Id === personId) {
+      (c.childIds || []).forEach((childId) => walk(childId));
+    }
+  });
+  return descendants;
+}
+
+/** Returns true if id1 and id2 share at least one parent couple. */
+function areSiblings(id1, id2) {
+  return data.couples.some(
+    (c) => (c.childIds || []).includes(id1) && (c.childIds || []).includes(id2)
+  );
+}
+
+/** Returns a Set of all sibling IDs (people sharing a parent couple) of personId. */
+function getSiblings(personId) {
+  const siblings = new Set();
+  data.couples.forEach((c) => {
+    if ((c.childIds || []).includes(personId)) {
+      (c.childIds || []).forEach((id) => { if (id !== personId) siblings.add(id); });
+    }
+  });
+  return siblings;
+}
+
 /* ── XSS-safe HTML escaping ───────────────────────────────── */
 function escapeHtml(str) {
   return String(str)
@@ -325,6 +429,15 @@ createCoupleForm.addEventListener('submit', (e) => {
            (c.person1Id === p2 && c.person2Id === p1)
   );
   if (duplicate) { showToast('This couple already exists', 'error'); return; }
+
+  if (getAncestors(p1).has(p2) || getAncestors(p2).has(p1)) {
+    showToast('Cannot form a couple between (grand-)parents and (grand-)children', 'error');
+    return;
+  }
+  if (areSiblings(p1, p2)) {
+    showToast('Cannot form a couple between siblings', 'error');
+    return;
+  }
 
   data.couples.push({ id: genId(), person1Id: p1, person2Id: p2, childIds: [] });
   createCoupleForm.reset();
@@ -372,16 +485,20 @@ document.addEventListener('click', async (e) => {
   const delPersonId = e.target.dataset.deletePerson;
   if (delPersonId) {
     const personName = getPersonName(delPersonId);
+
+    const isInCouple = data.couples.some(
+      (c) => c.person1Id === delPersonId || c.person2Id === delPersonId
+    );
+    const isChild = data.couples.some(
+      (c) => (c.childIds || []).includes(delPersonId)
+    );
+    if (isInCouple || isChild) {
+      showToast(`Cannot delete "${personName}": dweller is part of a couple or registered as a child`, 'error');
+      return;
+    }
+
     if (!await showConfirm(`Are you sure you want to delete "${personName}"?`)) return;
     data.persons = data.persons.filter((p) => p.id !== delPersonId);
-    // Remove from all couples
-    data.couples = data.couples.filter(
-      (c) => c.person1Id !== delPersonId && c.person2Id !== delPersonId
-    );
-    // Remove from childIds
-    data.couples.forEach((c) => {
-      c.childIds = c.childIds.filter((cid) => cid !== delPersonId);
-    });
     refresh();
     showToast('Person deleted');
     return;
@@ -410,8 +527,8 @@ copyMermaidBtn.addEventListener('click', async () => {
 
 /* ── Event: Export ────────────────────────────────────────── */
 exportBtn.addEventListener('click', () => {
-  Storage.exportJSON(data);
-  showToast('Exported family-tree.json', 'success');
+  Storage.exportJSON(currentVault, data);
+  showToast(`Exported vault-${currentVault}-family-tree.json`, 'success');
 });
 
 /* ── Event: Import ────────────────────────────────────────── */
@@ -438,6 +555,19 @@ clearBtn.addEventListener('click', async () => {
   showToast('All data cleared');
 });
 
+/* ── Event: Collapse / expand sections ────────────────────── */
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-collapse');
+  if (!btn) return;
+  const target = document.getElementById(btn.dataset.collapseTarget);
+  if (!target) return;
+  const expanded = btn.getAttribute('aria-expanded') === 'true';
+  btn.setAttribute('aria-expanded', String(!expanded));
+  btn.title = expanded ? 'Expand' : 'Collapse';
+  target.classList.toggle('is-collapsed', expanded);
+  btn.closest('.card-header').classList.toggle('no-bottom-margin', expanded);
+});
+
 /* ── Event: Toggle sidebar ────────────────────────────────── */
 function setSidebarCollapsed(collapsed) {
   document.body.classList.toggle('sidebar-hidden', collapsed);
@@ -450,10 +580,133 @@ sidebarToggleBtn.addEventListener('click', () => {
   setSidebarCollapsed(!document.body.classList.contains('sidebar-hidden'));
 });
 
+/* ── Event: Full screen for tree ─────────────────────────── */
+const treeCard = fullscreenBtn.closest('.card');
+
+fullscreenBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    treeCard.requestFullscreen().catch(() => {
+      showToast('Fullscreen not supported in this browser', 'error');
+    });
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+document.addEventListener('fullscreenchange', () => {
+  const isFs = !!document.fullscreenElement;
+  fullscreenBtn.innerHTML = isFs ? '✕ Exit Full Screen' : '⛶ Full Screen';
+  fullscreenBtn.title = isFs ? 'Exit full screen' : 'View tree in full screen';
+});
+
 /* ── PWA: Register service worker ─────────────────────────── */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => { /* silent */ });
 }
 
+/* ── Vault picker ─────────────────────────────────────────── */
+
+/** Switch to a vault: update badge, load its data, re-render. */
+async function enterVault(vaultNumber) {
+  currentVault = String(vaultNumber);
+  vaultBadge.textContent = `VAULT ${currentVault}`;
+  data = await Storage.load(currentVault);
+  Storage.setActiveVault(currentVault).catch((err) => {
+    console.warn('Failed to persist active vault:', err);
+  });
+}
+
+async function openVaultPicker() {
+  await renderVaultList();
+  vaultModal.classList.remove('hidden');
+  // Only allow closing when a vault is already active
+  vaultModalClose.classList.toggle('hidden', !currentVault);
+  vaultNumberInput.value = '';
+  // Focus first vault button if available, otherwise the number input
+  const firstVaultBtn = vaultListEl.querySelector('.vault-item');
+  (firstVaultBtn || vaultNumberInput).focus();
+}
+
+function closeVaultPicker() {
+  vaultModal.classList.add('hidden');
+}
+
+async function renderVaultList() {
+  vaultListEl.innerHTML = '<p class="vault-empty">Loading…</p>';
+  let vaults;
+  try {
+    vaults = await Storage.getVaults();
+  } catch (_) {
+    vaultListEl.innerHTML = '<p class="vault-empty" style="color:var(--danger)">Could not reach server.</p>';
+    return;
+  }
+  vaultListEl.innerHTML = '';
+  if (vaults.length === 0) {
+    vaultListEl.innerHTML = '<p class="vault-empty">No vaults yet — create one below.</p>';
+    return;
+  }
+  for (const num of vaults) {
+    const vd  = await Storage.load(num);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `vault-item${num === currentVault ? ' vault-item--active' : ''}`;
+    btn.innerHTML = `
+      <span class="vault-item-name">VAULT ${escapeHtml(num)}</span>
+      <span class="vault-item-stats">${vd.persons.length} dweller${vd.persons.length !== 1 ? 's' : ''} · ${vd.couples.length} couple${vd.couples.length !== 1 ? 's' : ''}</span>
+    `;
+    btn.addEventListener('click', async () => {
+      await enterVault(num);
+      closeVaultPicker();
+      refresh();
+    });
+    vaultListEl.appendChild(btn);
+  }
+}
+
+vaultCreateForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const raw    = vaultNumberInput.value.trim();
+  const parsed = Number(raw);
+  if (!raw || !Number.isInteger(parsed) || parsed < 1 || parsed > 9999) {
+    showToast('Enter a whole vault number between 1 and 9999', 'error');
+    return;
+  }
+  const vaultNum = String(parsed);
+  try {
+    const isNew = await Storage.createVault(vaultNum);
+    await enterVault(vaultNum);
+    closeVaultPicker();
+    refresh();
+    showToast(isNew ? `Welcome to Vault ${vaultNum}!` : `Entered Vault ${vaultNum}`, 'success');
+  } catch (_) {
+    showToast('Could not create vault — server unreachable', 'error');
+  }
+});
+
+vaultBadge.addEventListener('click', () => openVaultPicker());
+
+vaultModalClose.addEventListener('click', () => {
+  if (currentVault) closeVaultPicker();
+});
+
+vaultModal.addEventListener('click', (e) => {
+  if (e.target === vaultModal && currentVault) closeVaultPicker();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !vaultModal.classList.contains('hidden') && currentVault) {
+    closeVaultPicker();
+  }
+});
+
 /* ── Initial render ───────────────────────────────────────── */
-refresh();
+(async function init() {
+  const migrated = await Storage.migrateLegacyData();
+  const active   = migrated || await Storage.getActiveVault();
+  if (active) {
+    await enterVault(active);
+    refresh();
+  } else {
+    openVaultPicker();
+  }
+}());

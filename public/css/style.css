@@ -115,6 +115,7 @@ header .subtitle {
   letter-spacing: 0.06em;
 }
 
+/* ---------- vault badge (clickable) ---------- */
 .header-badge {
   background: var(--accent);
   color: var(--bg);
@@ -126,6 +127,14 @@ header .subtitle {
   box-shadow: var(--accent-glow);
   flex-shrink: 0;
   animation: badge-flicker 4s ease-in-out infinite;
+  border: none;
+  cursor: pointer;
+  transition: filter var(--transition), box-shadow var(--transition);
+}
+
+.header-badge:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 18px rgba(240, 192, 64, 0.65);
 }
 
 @keyframes badge-flicker {
@@ -716,7 +725,281 @@ body.sidebar-hidden .sidebar {
   flex: 1;
 }
 
+/* ---------- collapsible card header ---------- */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.card-header h2 { margin-bottom: 0; }
+
+/* remove gap under header when body is collapsed */
+.card-header.no-bottom-margin { margin-bottom: 0; }
+
+.btn-collapse {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.15rem 0.45rem;
+  transition: color var(--transition), border-color var(--transition), transform var(--transition);
+  width: auto;
+  flex-shrink: 0;
+}
+
+.btn-collapse:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-collapse[aria-expanded="false"] {
+  transform: rotate(-90deg);
+}
+
+.is-collapsed {
+  display: none;
+}
+
 /* ---------- scrollbar (webkit) ---------- */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ---------- full-screen tree ---------- */
+.card:fullscreen {
+  background: var(--bg);
+  border-radius: 0;
+  overflow: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.card:fullscreen .mermaid-container {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.card:fullscreen .mermaid-container svg {
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
+  width: auto;
+}
+
+/* ---------- vault picker modal ---------- */
+.vault-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 12, 24, 0.92);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  transition: opacity 0.2s ease;
+}
+
+.vault-modal-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vault-modal-box {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow), 0 0 40px rgba(240, 192, 64, 0.18);
+  padding: 2rem 1.75rem 1.75rem;
+  max-width: 420px;
+  width: calc(100% - 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: relative;
+  animation: modal-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.vault-modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.vault-modal-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.vault-modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0;
+}
+
+.vault-modal-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.vault-modal-section h3 {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.65rem;
+}
+
+/* list of existing vaults */
+.vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.vault-empty {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.vault-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
+  text-align: left;
+  width: 100%;
+  color: var(--text);
+}
+
+.vault-item:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: var(--accent-glow);
+}
+
+.vault-item--active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.vault-item-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+
+.vault-item-stats {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* create form */
+.vault-create-form {
+  width: 100%;
+}
+
+.vault-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vault-prefix {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.vault-input-row input[type="number"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.88rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  /* hide browser arrows */
+  -moz-appearance: textfield;
+}
+
+.vault-input-row input[type="number"]::-webkit-outer-spin-button,
+.vault-input-row input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.vault-input-row input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.vault-input-row .btn {
+  width: auto;
+  flex-shrink: 0;
+  padding: 0.6rem 1rem;
+  font-size: 0.82rem;
+}
+
+/* close button (top-right corner, only shown when a vault is active) */
+.vault-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.9rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: color var(--transition), background var(--transition);
+  line-height: 1;
+  width: auto;
+}
+
+.vault-modal-close:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+/* screen-reader only helper */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

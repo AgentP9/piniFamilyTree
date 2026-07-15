@@ -1,6 +1,20 @@
 services:
+  storage:
+    container_name: vault-storage
+    build:
+      context: ./server
+    volumes:
+      - family-tree-data:/data
+    restart: unless-stopped
+
   app:
+    container_name: vault-app
     build: .
     ports:
       - "3939:80"
+    depends_on:
+      - storage
     restart: unless-stopped
+
+volumes:
+  family-tree-data:
