@@ -226,14 +226,34 @@ function populateCouplePersonSelects() {
   const person1RequiredGender = person2 ? oppositeGender(person2.gender) : null;
   const person2RequiredGender = person1 ? oppositeGender(person1.gender) : null;
 
+  // Pre-compute relationship sets to avoid redundant graph traversal per candidate
+  const p1Ancestors   = person1 ? getAncestors(person1.id)   : new Set();
+  const p1Descendants = person1 ? getDescendants(person1.id) : new Set();
+  const p1Siblings    = person1 ? getSiblings(person1.id)    : new Set();
+  const p2Ancestors   = person2 ? getAncestors(person2.id)   : new Set();
+  const p2Descendants = person2 ? getDescendants(person2.id) : new Set();
+  const p2Siblings    = person2 ? getSiblings(person2.id)    : new Set();
+
   populatePersonSelect(
     couplePerson1Sel,
-    (person) => !person1RequiredGender || person.gender === person1RequiredGender,
+    (person) => {
+      if (person1RequiredGender && person.gender !== person1RequiredGender) return false;
+      if (!person2) return true;
+      return !p2Ancestors.has(person.id) &&
+             !p2Descendants.has(person.id) &&
+             !p2Siblings.has(person.id);
+    },
     partnerPlaceholder(person1RequiredGender)
   );
   populatePersonSelect(
     couplePerson2Sel,
-    (person) => !person2RequiredGender || person.gender === person2RequiredGender,
+    (person) => {
+      if (person2RequiredGender && person.gender !== person2RequiredGender) return false;
+      if (!person1) return true;
+      return !p1Ancestors.has(person.id) &&
+             !p1Descendants.has(person.id) &&
+             !p1Siblings.has(person.id);
+    },
     partnerPlaceholder(person2RequiredGender)
   );
 }
@@ -352,6 +372,17 @@ function areSiblings(id1, id2) {
   return data.couples.some(
     (c) => (c.childIds || []).includes(id1) && (c.childIds || []).includes(id2)
   );
+}
+
+/** Returns a Set of all sibling IDs (people sharing a parent couple) of personId. */
+function getSiblings(personId) {
+  const siblings = new Set();
+  data.couples.forEach((c) => {
+    if ((c.childIds || []).includes(personId)) {
+      (c.childIds || []).forEach((id) => { if (id !== personId) siblings.add(id); });
+    }
+  });
+  return siblings;
 }
 
 /* ── XSS-safe HTML escaping ───────────────────────────────── */
