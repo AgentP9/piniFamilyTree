@@ -77,22 +77,31 @@ const MermaidGen = (() => {
       const p2 = personMap.get(couple.person2Id);
       if (!p1 || !p2) return;
 
+      // Capture the layout decision BEFORE personToken() mutates declaredPersons,
+      // then pre-compute the tokens (which marks each person as declared).
       const bothNew = !declaredPersons.has(p1.id) && !declaredPersons.has(p2.id);
+      const token1 = personToken(p1);
+      const token2 = personToken(p2);
 
       if (bothNew) {
         // Wrap the couple in a subgraph with LR direction so the two partners
         // are rendered side-by-side on the same horizontal line.
+        // The pair node is declared inline inside the subgraph so Mermaid
+        // includes it in the LR layout; plain `${pairNid}` would leave it
+        // undefined outside the subgraph and break the LR placement.
         const sgNid = `sg${i + 1}`;
         lines.push(`    subgraph ${sgNid}[" "]`);
         lines.push(`        direction LR`);
-        lines.push(`        ${personToken(p1)} --- ${pairNid}((⚭)) --- ${personToken(p2)}`);
+        lines.push(`        ${token1} --- ${pairNid}((⚭)) --- ${token2}`);
         lines.push(`    end`);
         // Remove the subgraph border so it doesn't add visual clutter.
         lines.push(`    style ${sgNid} fill:transparent,stroke:transparent`);
       } else {
         // At least one partner is already placed — fall back to plain edges.
+        // The pair node is declared as a separate line here (not inside a
+        // subgraph) so its shape is still applied correctly.
         lines.push(`    ${pairNid}((⚭))`);
-        lines.push(`    ${personToken(p1)} --- ${pairNid} --- ${personToken(p2)}`);
+        lines.push(`    ${token1} --- ${pairNid} --- ${token2}`);
       }
 
       const validChildren = (couple.childIds || [])
