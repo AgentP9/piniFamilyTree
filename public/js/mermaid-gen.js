@@ -1,12 +1,13 @@
 /**
  * mermaid-gen.js — converts family tree data into a Mermaid flowchart string.
  *
- * Output format matches the example from the issue:
- *   flowchart TD
- *     PersonA["Alice"]
- *     Pair1((⚭))
- *     PersonA --- Pair1
- *     Pair1 --> Child1["Bob"]
+ * Layout strategy:
+ *   - Each couple where both partners are newly introduced is wrapped in a
+ *     `subgraph` with `direction LR` (and styled transparent) so the two
+ *     partners always appear side-by-side on the same horizontal line.
+ *   - When a person already appears in an earlier couple, a plain edge is
+ *     used instead (subgraph membership cannot be shared across subgraphs).
+ *   - Children and sibling-group nodes flow downward from their parent nodes.
  */
 
 const MermaidGen = (() => {
@@ -25,7 +26,7 @@ const MermaidGen = (() => {
 
   /**
    * Build the complete Mermaid flowchart code from the data object.
-   * @param {{ persons: Array, couples: Array }} data
+   * @param {{ persons: Array, couples: Array, siblingGroups?: Array }} data
    * @returns {string}
    */
   function generate(data) {
@@ -35,13 +36,6 @@ const MermaidGen = (() => {
 
     const personMap = new Map(persons.map((p) => [p.id, p]));
     const lines = ['flowchart TD'];
-
-    // ── person nodes ──────────────────────────────────────────
-    persons.forEach((p) => {
-      const nid = nodeId(p.id);
-      const label = escapeLabel(p.name);
-      lines.push(`    ${nid}["${label}"]`);
-    });
 
     // ── gender class definitions ──────────────────────────────
     const maleIds   = persons.filter((p) => p.gender === 'male').map((p) => nodeId(p.id));
@@ -58,7 +52,23 @@ const MermaidGen = (() => {
     if (maleIds.length > 0)   lines.push(`    class ${maleIds.join(',')} male`);
     if (femaleIds.length > 0) lines.push(`    class ${femaleIds.join(',')} female`);
 
-    // ── couple nodes & edges ──────────────────────────────────
+    // Track which person IDs have already been given a labelled declaration
+    // so we reference them by ID alone on subsequent appearances.
+    const declaredPersons = new Set();
+
+    /**
+     * Return a Mermaid node token for person p.
+     * First occurrence: `nXXX["Name"]`  — declares the node with its label.
+     * Later occurrences: `nXXX`         — references the already-declared node.
+     */
+    function personToken(p) {
+      const nid = nodeId(p.id);
+      if (declaredPersons.has(p.id)) return nid;
+      declaredPersons.add(p.id);
+      return `${nid}["${escapeLabel(p.name)}"]`;
+    }
+
+    // ── couple subgraphs & edges ──────────────────────────────
     if (couples.length > 0) lines.push('');
 
     couples.forEach((couple, i) => {
@@ -67,8 +77,23 @@ const MermaidGen = (() => {
       const p2 = personMap.get(couple.person2Id);
       if (!p1 || !p2) return;
 
-      lines.push(`    ${pairNid}((⚭))`);
-      lines.push(`    ${nodeId(p1.id)} --- ${pairNid} --- ${nodeId(p2.id)}`);
+      const bothNew = !declaredPersons.has(p1.id) && !declaredPersons.has(p2.id);
+
+      if (bothNew) {
+        // Wrap the couple in a subgraph with LR direction so the two partners
+        // are rendered side-by-side on the same horizontal line.
+        const sgNid = `sg${i + 1}`;
+        lines.push(`    subgraph ${sgNid}[" "]`);
+        lines.push(`        direction LR`);
+        lines.push(`        ${personToken(p1)} --- ${pairNid}((⚭)) --- ${personToken(p2)}`);
+        lines.push(`    end`);
+        // Remove the subgraph border so it doesn't add visual clutter.
+        lines.push(`    style ${sgNid} fill:transparent,stroke:transparent`);
+      } else {
+        // At least one partner is already placed — fall back to plain edges.
+        lines.push(`    ${pairNid}((⚭))`);
+        lines.push(`    ${personToken(p1)} --- ${pairNid} --- ${personToken(p2)}`);
+      }
 
       const validChildren = (couple.childIds || [])
         .map((cid) => personMap.get(cid))
@@ -76,15 +101,22 @@ const MermaidGen = (() => {
 
       if (validChildren.length > 0) {
         validChildren.forEach((child) => {
-          lines.push(`    ${pairNid} --> ${nodeId(child.id)}`);
+          lines.push(`    ${pairNid} --> ${personToken(child)}`);
         });
       } else {
-        // NN (No-Name) placeholder matches the format from the project spec:
-        // "Pair1 --> NN1["?"]" — shown when a couple has no registered children yet.
+        // NN (No-Name) placeholder — shown when a couple has no registered children yet.
         lines.push(`    ${pairNid} --> NN${i + 1}["?"]`);
       }
 
       lines.push('');
+    });
+
+    // ── standalone persons (not part of any couple) ───────────
+    persons.forEach((p) => {
+      if (!declaredPersons.has(p.id)) {
+        lines.push(`    ${nodeId(p.id)}["${escapeLabel(p.name)}"]`);
+        declaredPersons.add(p.id);
+      }
     });
 
     // ── sibling-group nodes & edges ───────────────────────────
