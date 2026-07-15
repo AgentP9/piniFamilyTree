@@ -13,7 +13,7 @@ services:
     ports:
       - "3939:80"
     depends_on:
-      - api
+      - storage
     restart: unless-stopped
 
 volumes:
