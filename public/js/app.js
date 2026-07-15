@@ -234,7 +234,7 @@ function renderSiblingGroupsList() {
 function populateSelects() {
   populateCouplePersonSelects();
 
-  // Child dropdown: free dwellers (not already registered as a child of another couple).
+  // Child dropdown: free dwellers (not already registered as a child of any couple).
   // Dwellers who are already in a couple ARE allowed — a person can be both a partner
   // in their own couple and a child of their parents' couple.
   const childrenIds = new Set(data.couples.flatMap((c) => c.childIds || []));
@@ -574,9 +574,9 @@ linkSiblingsForm.addEventListener('submit', (e) => {
       id:        genId(),
       personIds: [...new Set([...groups[group1Idx].personIds, ...groups[group2Idx].personIds])]
     };
-    const [hi, lo] = [group1Idx, group2Idx].sort((a, b) => b - a);
-    groups.splice(hi, 1);
-    groups.splice(lo, 1);
+    const [higherIndex, lowerIndex] = [group1Idx, group2Idx].sort((a, b) => b - a);
+    groups.splice(higherIndex, 1);
+    groups.splice(lowerIndex, 1);
     groups.push(merged);
   }
 
