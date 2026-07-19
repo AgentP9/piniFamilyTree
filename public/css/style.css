@@ -582,7 +582,7 @@ body.sidebar-hidden .sidebar {
   font-weight: 600;
   border: 1.5px solid transparent;
   animation: chip-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
-  transition: box-shadow var(--transition), transform var(--transition), opacity var(--transition), filter var(--transition), border-color var(--transition);
+  transition: all var(--transition);
   cursor: pointer;
 }
 
@@ -624,7 +624,7 @@ body.sidebar-hidden .sidebar {
   border: 1.5px solid rgba(251, 146, 60, 0.4);
   color: var(--text);
   animation: chip-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
-  transition: box-shadow var(--transition), transform var(--transition), opacity var(--transition), filter var(--transition), border-color var(--transition);
+  transition: all var(--transition);
   cursor: pointer;
 }
 
@@ -642,6 +642,7 @@ body.sidebar-hidden .sidebar {
   border: 1px solid var(--border);
 }
 
+/* Allow chip text to shrink cleanly inside the flex row next to badges/buttons. */
 .chip-label {
   min-width: 0;
 }
@@ -671,6 +672,8 @@ body.sidebar-hidden .sidebar {
 }
 
 .person-chip.is-eligible {
+  border-style: dashed;
+  border-width: 2px;
   box-shadow: 0 0 0 2px rgba(127, 255, 0, 0.2), 0 0 18px rgba(127, 255, 0, 0.18);
 }
 

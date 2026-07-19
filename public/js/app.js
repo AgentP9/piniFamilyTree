@@ -168,8 +168,13 @@ function syncSelectionState() {
   if (selectedCoupleId && !getCouple(selectedCoupleId)) selectedCoupleId = null;
 }
 
+function getRegisteredChildIds() {
+  return new Set(data.couples.flatMap((couple) => couple.childIds || []));
+}
+
 function personInteractionClasses(personId) {
   const classes = [];
+  const registeredChildIds = selectedCoupleId ? getRegisteredChildIds() : null;
 
   if (selectedPersonId) {
     if (personId === selectedPersonId) {
@@ -184,7 +189,7 @@ function personInteractionClasses(personId) {
     if (!selectedCouple) return classes;
     if (personId === selectedCouple.person1Id || personId === selectedCouple.person2Id) {
       classes.push('is-active');
-    } else if (canRegisterChild(selectedCoupleId, personId)) {
+    } else if (canRegisterChild(selectedCoupleId, personId, registeredChildIds)) {
       classes.push('is-eligible');
     }
   }
@@ -227,7 +232,7 @@ function renderPersonsList() {
     const chip = document.createElement('span');
     chip.className = `person-chip ${p.gender} ${personInteractionClasses(p.id).join(' ')}`.trim();
     chip.dataset.personId = p.id;
-    chip.tabIndex = 0;
+    chip.setAttribute('tabindex', '0');
     chip.setAttribute('role', 'button');
     chip.setAttribute('aria-pressed', String(selectedPersonId === p.id));
     chip.innerHTML = `
@@ -250,7 +255,7 @@ function renderCouplesList() {
     const chip = document.createElement('span');
     chip.className = `couple-chip${selectedCoupleId === c.id ? ' is-active' : ''}`;
     chip.dataset.coupleId = c.id;
-    chip.tabIndex = 0;
+    chip.setAttribute('tabindex', '0');
     chip.setAttribute('role', 'button');
     chip.setAttribute('aria-pressed', String(selectedCoupleId === c.id));
     const childCount = (c.childIds || []).length;
@@ -291,7 +296,7 @@ function populateSelects() {
   // Child dropdown: free dwellers (not already registered as a child of any couple).
   // Dwellers who are already in a couple ARE allowed — a person can be both a partner
   // in their own couple and a child of their parents' couple.
-  const childrenIds = new Set(data.couples.flatMap((c) => c.childIds || []));
+  const childrenIds = getRegisteredChildIds();
   populatePersonSelect(
     childPersonSel,
     (person) => !childrenIds.has(person.id),
@@ -400,7 +405,7 @@ function selectPerson(personId) {
   if (!getPerson(personId)) return;
   selectedPersonId = personId;
   selectedCoupleId = null;
-  usePersonForCoupleSelection(personId);
+  applyPersonToCoupleForm(personId);
   renderView();
 }
 
@@ -419,9 +424,17 @@ function clearSelection() {
   renderView();
 }
 
+function escapeSelectorValue(value) {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(value);
+  }
+  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 function findDiagramNode(rawId) {
+  const escapedId = escapeSelectorValue(rawId);
   return mermaidDiagram.querySelector(
-    `g[data-id="${rawId}"], g[id="${rawId}"], g[id$="-${rawId}"]`
+    `g[data-id="${escapedId}"], g[id="${escapedId}"], g[id$="-${escapedId}"]`
   );
 }
 
@@ -575,14 +588,13 @@ function canFormCouple(person1Id, person2Id) {
   return true;
 }
 
-function canRegisterChild(coupleId, childId) {
+function canRegisterChild(coupleId, childId, registeredChildIds = getRegisteredChildIds()) {
   if (!coupleId || !childId) return false;
   const couple = getCouple(coupleId);
   if (!couple || !getPerson(childId)) return false;
   if (couple.person1Id === childId || couple.person2Id === childId) return false;
   if ((couple.childIds || []).includes(childId)) return false;
-  const childrenIds = new Set(data.couples.flatMap((c) => c.childIds || []));
-  return !childrenIds.has(childId);
+  return !registeredChildIds.has(childId);
 }
 
 function collectPerspectiveData(rootPersonIds, anchoredCoupleId = null) {
@@ -620,17 +632,12 @@ function collectPerspectiveData(rootPersonIds, anchoredCoupleId = null) {
   });
 
   const persons = data.persons.filter((person) => relevantPersonIds.has(person.id));
-  const personIds = new Set(persons.map((person) => person.id));
-  const couples = relevantCouples.filter((couple) => (
-    personIds.has(couple.person1Id) ||
-    personIds.has(couple.person2Id) ||
-    (couple.childIds || []).some((childId) => personIds.has(childId))
-  ));
+  const couples = relevantCouples;
   const siblingGroups = (data.siblingGroups || [])
-    .map((group) => ({
-      ...group,
-      personIds: (group.personIds || []).filter((personId) => personIds.has(personId))
-    }))
+    .map((group) => {
+      const filteredPersonIds = (group.personIds || []).filter((personId) => relevantPersonIds.has(personId));
+      return { id: group.id, personIds: filteredPersonIds };
+    })
     .filter((group) => group.personIds.length >= 2);
 
   return { persons, couples, siblingGroups };
@@ -648,13 +655,16 @@ function getDiagramData() {
   return data;
 }
 
-function usePersonForCoupleSelection(personId) {
+function applyPersonToCoupleForm(personId) {
   const current1 = couplePerson1Sel.value;
   const current2 = couplePerson2Sel.value;
 
-  if (current1 && current1 !== personId && canFormCouple(current1, personId)) {
+  if (!current1 && !current2) {
+    couplePerson1Sel.value = personId;
+    couplePerson2Sel.value = '';
+  } else if (current1 && current1 !== personId && canFormCouple(current1, personId)) {
     couplePerson2Sel.value = personId;
-  } else if (current2 && current2 !== personId && canFormCouple(personId, current2)) {
+  } else if (!current1 && current2 && current2 !== personId && canFormCouple(current2, personId)) {
     couplePerson1Sel.value = personId;
   } else {
     couplePerson1Sel.value = personId;
@@ -946,13 +956,15 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
-  const personChip = e.target.closest('.person-chip[data-person-id]');
+  const interactiveTarget = e.target.closest('[role="button"]');
+  if (!interactiveTarget) return;
+  const personChip = interactiveTarget.closest('.person-chip[data-person-id]');
   if (personChip) {
     e.preventDefault();
     selectPerson(personChip.dataset.personId);
     return;
   }
-  const coupleChip = e.target.closest('.couple-chip[data-couple-id]');
+  const coupleChip = interactiveTarget.closest('.couple-chip[data-couple-id]');
   if (coupleChip) {
     e.preventDefault();
     selectCouple(coupleChip.dataset.coupleId);
