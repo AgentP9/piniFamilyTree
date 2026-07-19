@@ -16,6 +16,11 @@ const MermaidGen = (() => {
     return 'n' + id.replace(/-/g, '');
   }
 
+  /** Convert a couple ID to a safe Mermaid node identifier. */
+  function pairNodeId(id) {
+    return 'pair' + String(id).replace(/[^a-zA-Z0-9_]/g, '');
+  }
+
   /**
    * Escape special characters inside Mermaid label strings.
    * Double-quotes and some characters break the syntax.
@@ -72,7 +77,7 @@ const MermaidGen = (() => {
     if (couples.length > 0) lines.push('');
 
     couples.forEach((couple, i) => {
-      const pairNid = `Pair${i + 1}`;
+      const pairNid = pairNodeId(couple.id || `fallback-${i + 1}`);
       const p1 = personMap.get(couple.person1Id);
       const p2 = personMap.get(couple.person2Id);
       if (!p1 || !p2) return;
@@ -154,5 +159,5 @@ const MermaidGen = (() => {
     return lines.join('\n');
   }
 
-  return { generate };
+  return { generate, nodeId, pairNodeId };
 })();
