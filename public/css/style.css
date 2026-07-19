@@ -666,6 +666,11 @@ body.sidebar-hidden .sidebar {
   box-shadow: 0 0 0 2px rgba(255, 143, 200, 0.6), 0 0 18px rgba(255, 143, 200, 0.35);
 }
 
+.person-chip.is-single {
+  outline: 1.5px dashed rgba(251, 191, 36, 0.78);
+  outline-offset: 1px;
+}
+
 .couple-chip.is-active {
   border-color: rgba(251, 146, 60, 0.85);
   box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.25), 0 0 18px rgba(251, 146, 60, 0.28);
@@ -750,6 +755,12 @@ body.sidebar-hidden .sidebar {
 .mermaid-container g.pft-node--active :is(rect, circle, ellipse, polygon, path) {
   filter: drop-shadow(0 0 9px rgba(240, 192, 64, 0.6));
   stroke-width: 2.5px;
+}
+
+.mermaid-container g.pft-node--single :is(rect, circle, ellipse, polygon, path) {
+  stroke-dasharray: 6 3;
+  stroke-width: 2.25px;
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.38));
 }
 
 /* ---------- empty state ---------- */

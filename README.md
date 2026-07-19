@@ -19,6 +19,7 @@ A Docker-based PWA for visualising **Fallout Shelter** vault dweller family tree
 - **Family tree diagram** – a live Mermaid flowchart that updates in real time.
   - Click a dweller to start a couple from that person, dim invalid partners, and focus the tree on that family perspective.
   - Click a couple to prefill the parent selector, highlight eligible children, and focus the tree on that branch.
+  - Dwellers who are not part of any couple are highlighted as singles.
   - Copy the Mermaid source with one click.
   - View the tree in **full screen** for a better overview.
 - **Data management** – export / import the family tree as JSON; wipe all data.

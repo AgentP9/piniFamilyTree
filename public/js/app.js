@@ -172,6 +172,14 @@ function getRegisteredChildIds() {
   return new Set(data.couples.flatMap((couple) => couple.childIds || []));
 }
 
+function getCoupledPersonIds() {
+  return new Set(data.couples.flatMap((couple) => [couple.person1Id, couple.person2Id]));
+}
+
+function isSinglePerson(personId, coupledPersonIds = getCoupledPersonIds()) {
+  return !coupledPersonIds.has(personId);
+}
+
 function personInteractionClasses(personId) {
   const classes = [];
   const registeredChildIds = selectedCoupleId ? getRegisteredChildIds() : null;
@@ -228,9 +236,13 @@ function renderPersonsList() {
     personsList.innerHTML = '<span style="color:var(--text-muted);font-size:.82rem">No people yet</span>';
     return;
   }
+  const coupledPersonIds = getCoupledPersonIds();
   data.persons.forEach((p) => {
     const chip = document.createElement('span');
-    chip.className = `person-chip ${p.gender} ${personInteractionClasses(p.id).join(' ')}`.trim();
+    const classes = ['person-chip', p.gender];
+    if (isSinglePerson(p.id, coupledPersonIds)) classes.push('is-single');
+    classes.push(...personInteractionClasses(p.id));
+    chip.className = classes.join(' ');
     chip.dataset.personId = p.id;
     chip.setAttribute('tabindex', '0');
     chip.setAttribute('role', 'button');
@@ -443,10 +455,14 @@ function enhanceDiagramInteractivity() {
     node.classList.add('pft-node--interactive');
   });
 
+  const coupledPersonIds = getCoupledPersonIds();
   data.persons.forEach((person) => {
     const node = findDiagramNode(MermaidGen.nodeId(person.id));
     if (!node) return;
     node.dataset.personId = person.id;
+    if (isSinglePerson(person.id, coupledPersonIds)) {
+      node.classList.add('pft-node--single');
+    }
     if (selectedPersonId === person.id) {
       node.classList.add('pft-node--active');
     } else if (selectedCoupleId) {
