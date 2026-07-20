@@ -21,6 +21,7 @@ const GENDER_LABELS = {
   [GENDER_MALE]: 'Male',
   [GENDER_FEMALE]: 'Female'
 };
+const PERSON_NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 /* ── App state ────────────────────────────────────────────── */
 let currentVault = null;
@@ -142,8 +143,58 @@ function getPersonName(id) {
   return p ? p.name : '(unknown)';
 }
 
+function comparePersonsByName(a, b) {
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  return PERSON_NAME_COLLATOR.compare(a.name, b.name) || PERSON_NAME_COLLATOR.compare(a.id, b.id);
+}
+
+function getSortedPersons(persons = data.persons) {
+  return [...persons].sort(comparePersonsByName);
+}
+
+function getCanonicalCouplePersonIds(person1Id, person2Id, personLookup = getPerson) {
+  const person1 = personLookup(person1Id);
+  const person2 = personLookup(person2Id);
+  if (person1 && person1.gender === GENDER_FEMALE && (!person2 || person2.gender === GENDER_MALE)) {
+    return { person1Id: person2Id, person2Id: person1Id };
+  }
+  if (person2 && person2.gender === GENDER_MALE && (!person1 || person1.gender === GENDER_FEMALE)) {
+    return { person1Id: person2Id, person2Id: person1Id };
+  }
+  return { person1Id, person2Id };
+}
+
+function normalizeCouple(couple, personLookup = getPerson) {
+  const { person1Id, person2Id } = getCanonicalCouplePersonIds(couple.person1Id, couple.person2Id, personLookup);
+  if (person1Id === couple.person1Id && person2Id === couple.person2Id) return couple;
+  return { ...couple, person1Id, person2Id };
+}
+
+function normalizeDataShape(inputData) {
+  const source = inputData || {};
+  const persons = Array.isArray(source.persons) ? source.persons : [];
+  const personMap = new Map(persons.map((person) => [person.id, person]));
+  const personLookup = (personId) => personMap.get(personId) || null;
+  return {
+    persons,
+    couples: Array.isArray(source.couples) ? source.couples.map((couple) => normalizeCouple(couple, personLookup)) : [],
+    siblingGroups: Array.isArray(source.siblingGroups) ? source.siblingGroups : []
+  };
+}
+
 function coupleName(couple) {
-  return `${getPersonName(couple.person1Id)} ⚭ ${getPersonName(couple.person2Id)}`;
+  const { person1Id, person2Id } = getCanonicalCouplePersonIds(couple.person1Id, couple.person2Id);
+  return `${getPersonName(person1Id)} ⚭ ${getPersonName(person2Id)}`;
+}
+
+function getSortedCouples(couples = data.couples) {
+  return [...couples].sort((a, b) => {
+    const aName = coupleName(a);
+    const bName = coupleName(b);
+    return PERSON_NAME_COLLATOR.compare(aName, bName) || PERSON_NAME_COLLATOR.compare(a.id, b.id);
+  });
 }
 
 function oppositeGender(gender) {
@@ -224,6 +275,7 @@ function renderView() {
 }
 
 function refresh() {
+  data = normalizeDataShape(data);
   save();
   renderView();
 }
@@ -237,7 +289,7 @@ function renderPersonsList() {
     return;
   }
   const coupledPersonIds = getCoupledPersonIds();
-  data.persons.forEach((p) => {
+  getSortedPersons().forEach((p) => {
     const chip = document.createElement('span');
     const classes = ['person-chip', p.gender];
     if (isSinglePerson(p.id, coupledPersonIds)) classes.push('is-single');
@@ -263,7 +315,7 @@ function renderCouplesList() {
     couplesList.innerHTML = '<span style="color:var(--text-muted);font-size:.82rem">No couples yet</span>';
     return;
   }
-  data.couples.forEach((c) => {
+  getSortedCouples().forEach((c) => {
     const chip = document.createElement('span');
     chip.className = `couple-chip${selectedCoupleId === c.id ? ' is-active' : ''}`;
     chip.dataset.coupleId = c.id;
@@ -292,7 +344,12 @@ function renderSiblingGroupsList() {
   groups.forEach((g) => {
     const chip = document.createElement('span');
     chip.className = 'sibling-group-chip';
-    const names = (g.personIds || []).map((id) => escapeHtml(getPersonName(id))).join(' 🤝 ');
+    const names = (g.personIds || [])
+      .map((id) => getPerson(id))
+      .filter(Boolean)
+      .sort(comparePersonsByName)
+      .map((person) => escapeHtml(person.name))
+      .join(' 🤝 ');
     chip.innerHTML = `
       ${names}
       <button class="btn-icon" title="Remove sibling link" data-delete-sibling-group="${g.id}">✕</button>
@@ -322,10 +379,14 @@ function populateSelects() {
 }
 
 function populateCouplePersonSelects() {
+  const normalizedSelection = getCanonicalCouplePersonIds(couplePerson1Sel.value, couplePerson2Sel.value);
+  if (normalizedSelection.person1Id !== couplePerson1Sel.value) couplePerson1Sel.value = normalizedSelection.person1Id || '';
+  if (normalizedSelection.person2Id !== couplePerson2Sel.value) couplePerson2Sel.value = normalizedSelection.person2Id || '';
+
   const person1 = getPerson(couplePerson1Sel.value);
   const person2 = getPerson(couplePerson2Sel.value);
-  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : null;
-  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : null;
+  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : GENDER_MALE;
+  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : GENDER_FEMALE;
 
   // Pre-compute relationship sets to avoid redundant graph traversal per candidate
   const p1Ancestors   = person1 ? getAncestors(person1.id)   : new Set();
@@ -368,7 +429,7 @@ function populatePersonSelect(sel, filterFn = () => true, placeholder = '— Sel
   placeholderOpt.textContent = placeholder;
   sel.appendChild(placeholderOpt);
 
-  const filteredPersons = data.persons.filter(filterFn);
+  const filteredPersons = getSortedPersons(data.persons.filter(filterFn));
   filteredPersons.forEach((p) => {
     const opt = document.createElement('option');
     opt.value = p.id;
@@ -384,7 +445,7 @@ function populatePersonSelect(sel, filterFn = () => true, placeholder = '— Sel
 function populateCoupleSelect(sel) {
   const current = sel.value;
   sel.innerHTML = '<option value="">— Select couple —</option>';
-  data.couples.forEach((c) => {
+  getSortedCouples().forEach((c) => {
     const opt = document.createElement('option');
     opt.value = c.id;
     opt.textContent = coupleName(c);
@@ -647,7 +708,7 @@ function collectPerspectiveData(rootPersonIds, anchoredCoupleId = null) {
     (couple.childIds || []).forEach((childId) => relevantPersonIds.add(childId));
   });
 
-  const persons = data.persons.filter((person) => relevantPersonIds.has(person.id));
+  const persons = getSortedPersons(data.persons.filter((person) => relevantPersonIds.has(person.id)));
   const couples = relevantCouples;
   const siblingGroups = (data.siblingGroups || [])
     .map((group) => {
@@ -672,21 +733,27 @@ function getDiagramData() {
 }
 
 function applyPersonToCoupleForm(personId) {
+  const person = getPerson(personId);
+  if (!person) return;
+
   const current1 = couplePerson1Sel.value;
   const current2 = couplePerson2Sel.value;
+  const otherId = person.gender === GENDER_MALE ? current2 : current1;
+  const normalizedSelection = person.gender === GENDER_MALE
+    ? { person1Id: personId, person2Id: otherId }
+    : { person1Id: otherId, person2Id: personId };
 
-  if (!current1 && !current2) {
-    couplePerson1Sel.value = personId;
-    couplePerson2Sel.value = '';
-  } else if (current1 && current1 !== personId && canFormCouple(current1, personId)) {
-    couplePerson2Sel.value = personId;
-  } else if (!current1 && current2 && current2 !== personId && canFormCouple(current2, personId)) {
-    couplePerson1Sel.value = personId;
-  } else {
-    couplePerson1Sel.value = personId;
-    couplePerson2Sel.value = '';
+  if (normalizedSelection.person1Id && normalizedSelection.person2Id &&
+      !canFormCouple(normalizedSelection.person1Id, normalizedSelection.person2Id)) {
+    if (person.gender === GENDER_MALE) {
+      normalizedSelection.person2Id = '';
+    } else {
+      normalizedSelection.person1Id = '';
+    }
   }
 
+  couplePerson1Sel.value = normalizedSelection.person1Id || '';
+  couplePerson2Sel.value = normalizedSelection.person2Id || '';
   populateCouplePersonSelects();
 }
 
@@ -742,7 +809,8 @@ createCoupleForm.addEventListener('submit', (e) => {
     return;
   }
 
-  const newCouple = { id: genId(), person1Id: p1, person2Id: p2, childIds: [] };
+  const orderedCouple = getCanonicalCouplePersonIds(p1, p2);
+  const newCouple = { id: genId(), person1Id: orderedCouple.person1Id, person2Id: orderedCouple.person2Id, childIds: [] };
   data.couples.push(newCouple);
   createCoupleForm.reset();
   selectedPersonId = null;
@@ -940,7 +1008,7 @@ importFile.addEventListener('change', async () => {
   const file = importFile.files[0];
   if (!file) return;
   try {
-    data = await Storage.importJSON(file);
+    data = normalizeDataShape(await Storage.importJSON(file));
     importFile.value = '';
     refresh();
     showToast('Data imported successfully', 'success');
@@ -1029,7 +1097,7 @@ if ('serviceWorker' in navigator) {
 async function enterVault(vaultNumber) {
   currentVault = String(vaultNumber);
   vaultBadge.textContent = `VAULT ${currentVault}`;
-  data = await Storage.load(currentVault);
+  data = normalizeDataShape(await Storage.load(currentVault));
   Storage.setActiveVault(currentVault).catch((err) => {
     console.warn('Failed to persist active vault:', err);
   });
