@@ -157,9 +157,10 @@ function getSortedPersons(persons = data.persons) {
 function getCanonicalCouplePersonIds(person1Id, person2Id, personLookup = getPerson) {
   const person1 = personLookup(person1Id);
   const person2 = personLookup(person2Id);
-  const shouldSwap = (person1 && person1.gender === GENDER_FEMALE && (!person2 || person2.gender === GENDER_MALE)) ||
-    (person2 && person2.gender === GENDER_MALE && (!person1 || person1.gender === GENDER_FEMALE));
-  if (shouldSwap) {
+  if ((person1 && person1.gender === GENDER_MALE) || (person2 && person2.gender === GENDER_FEMALE)) {
+    return { person1Id, person2Id };
+  }
+  if ((person1 && person1.gender === GENDER_FEMALE) || (person2 && person2.gender === GENDER_MALE)) {
     return { person1Id: person2Id, person2Id: person1Id };
   }
   return { person1Id, person2Id };
@@ -737,10 +738,10 @@ function applyPersonToCoupleForm(personId) {
 
   const current1 = couplePerson1Sel.value;
   const current2 = couplePerson2Sel.value;
-  const otherId = person.gender === GENDER_MALE ? current2 : current1;
+  const currentOtherPersonId = person.gender === GENDER_MALE ? current2 : current1;
   const normalizedSelection = person.gender === GENDER_MALE
-    ? { person1Id: personId, person2Id: otherId }
-    : { person1Id: otherId, person2Id: personId };
+    ? { person1Id: personId, person2Id: currentOtherPersonId }
+    : { person1Id: currentOtherPersonId, person2Id: personId };
 
   if (normalizedSelection.person1Id && normalizedSelection.person2Id &&
       !canFormCouple(normalizedSelection.person1Id, normalizedSelection.person2Id)) {
