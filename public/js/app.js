@@ -21,8 +21,6 @@ const GENDER_LABELS = {
   [GENDER_MALE]: 'Male',
   [GENDER_FEMALE]: 'Female'
 };
-const DEFAULT_COUPLE_PERSON1_GENDER = GENDER_MALE;
-const DEFAULT_COUPLE_PERSON2_GENDER = GENDER_FEMALE;
 const PERSON_NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 /* ── App state ────────────────────────────────────────────── */
@@ -156,14 +154,18 @@ function getSortedPersons(persons = data.persons) {
   return [...persons].sort(comparePersonsByName);
 }
 
-function getCanonicalCouplePersonIds(person1Id, person2Id, personLookup = getPerson) {
-  const person1 = personLookup(person1Id);
-  const person2 = personLookup(person2Id);
-  if (
+function shouldSwapCoupleOrder(person1, person2) {
+  return (
     (person1 && person1.gender === GENDER_FEMALE && person2 && person2.gender === GENDER_MALE) ||
     (person1 && person1.gender === GENDER_FEMALE && !person2) ||
     (!person1 && person2 && person2.gender === GENDER_MALE)
-  ) {
+  );
+}
+
+function getCanonicalCouplePersonIds(person1Id, person2Id, personLookup = getPerson) {
+  const person1 = personLookup(person1Id);
+  const person2 = personLookup(person2Id);
+  if (shouldSwapCoupleOrder(person1, person2)) {
     return { person1Id: person2Id, person2Id: person1Id };
   }
   return { person1Id, person2Id };
@@ -392,8 +394,8 @@ function normalizeCouplePersonSelectValues() {
 function populateCouplePersonSelects() {
   const person1 = getPerson(couplePerson1Sel.value);
   const person2 = getPerson(couplePerson2Sel.value);
-  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : DEFAULT_COUPLE_PERSON1_GENDER;
-  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : DEFAULT_COUPLE_PERSON2_GENDER;
+  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : GENDER_MALE;
+  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : GENDER_FEMALE;
 
   // Pre-compute relationship sets to avoid redundant graph traversal per candidate
   const p1Ancestors   = person1 ? getAncestors(person1.id)   : new Set();
@@ -743,16 +745,18 @@ function applyPersonToCoupleForm(personId) {
   const person = getPerson(personId);
   if (!person) return;
 
+  // normalizeCouplePersonSelectValues keeps the form in canonical order before user-driven updates:
+  // slot 1 is the male side and slot 2 is the female side.
   const current1 = couplePerson1Sel.value;
   const current2 = couplePerson2Sel.value;
   const currentPartnerPersonId = person.gender === GENDER_MALE ? current2 : current1;
-  // Mirror the canonical couple ordering defined by DEFAULT_COUPLE_PERSON1_GENDER/DEFAULT_COUPLE_PERSON2_GENDER.
   const normalizedSelection = person.gender === GENDER_MALE
     ? { person1Id: personId, person2Id: currentPartnerPersonId }
     : { person1Id: currentPartnerPersonId, person2Id: personId };
 
   if (normalizedSelection.person1Id && normalizedSelection.person2Id &&
       !canFormCouple(normalizedSelection.person1Id, normalizedSelection.person2Id)) {
+    // Preserve the clicked person and clear the previously selected partner slot.
     if (person.gender === GENDER_MALE) {
       normalizedSelection.person2Id = '';
     } else {
