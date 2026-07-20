@@ -159,13 +159,11 @@ function getSortedPersons(persons = data.persons) {
 function getCanonicalCouplePersonIds(person1Id, person2Id, personLookup = getPerson) {
   const person1 = personLookup(person1Id);
   const person2 = personLookup(person2Id);
-  const person1IsFemale = person1 && person1.gender === GENDER_FEMALE;
-  const person2IsMale = person2 && person2.gender === GENDER_MALE;
-  const femaleIsInFirstSlot = person1IsFemale;
-  const maleIsInSecondSlot = person2IsMale;
-  const loneFemaleIsInFirstSlot = person1IsFemale && !person2;
-  const loneMaleIsInSecondSlot = !person1 && person2IsMale;
-  if ((femaleIsInFirstSlot && maleIsInSecondSlot) || loneFemaleIsInFirstSlot || loneMaleIsInSecondSlot) {
+  if (
+    (person1 && person1.gender === GENDER_FEMALE && person2 && person2.gender === GENDER_MALE) ||
+    (person1 && person1.gender === GENDER_FEMALE && !person2) ||
+    (!person1 && person2 && person2.gender === GENDER_MALE)
+  ) {
     return { person1Id: person2Id, person2Id: person1Id };
   }
   return { person1Id, person2Id };
@@ -747,11 +745,11 @@ function applyPersonToCoupleForm(personId) {
 
   const current1 = couplePerson1Sel.value;
   const current2 = couplePerson2Sel.value;
-  const currentOtherPersonId = person.gender === GENDER_MALE ? current2 : current1;
-  // Mirror the canonical couple ordering used throughout the app: person1 = male, person2 = female.
+  const currentPartnerPersonId = person.gender === GENDER_MALE ? current2 : current1;
+  // Mirror the canonical couple ordering defined by DEFAULT_COUPLE_PERSON1_GENDER/DEFAULT_COUPLE_PERSON2_GENDER.
   const normalizedSelection = person.gender === GENDER_MALE
-    ? { person1Id: personId, person2Id: currentOtherPersonId }
-    : { person1Id: currentOtherPersonId, person2Id: personId };
+    ? { person1Id: personId, person2Id: currentPartnerPersonId }
+    : { person1Id: currentPartnerPersonId, person2Id: personId };
 
   if (normalizedSelection.person1Id && normalizedSelection.person2Id &&
       !canFormCouple(normalizedSelection.person1Id, normalizedSelection.person2Id)) {
