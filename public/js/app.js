@@ -157,10 +157,9 @@ function getSortedPersons(persons = data.persons) {
 function getCanonicalCouplePersonIds(person1Id, person2Id, personLookup = getPerson) {
   const person1 = personLookup(person1Id);
   const person2 = personLookup(person2Id);
-  if (person1 && person1.gender === GENDER_FEMALE && (!person2 || person2.gender === GENDER_MALE)) {
-    return { person1Id: person2Id, person2Id: person1Id };
-  }
-  if (person2 && person2.gender === GENDER_MALE && (!person1 || person1.gender === GENDER_FEMALE)) {
+  const shouldSwap = (person1 && person1.gender === GENDER_FEMALE && (!person2 || person2.gender === GENDER_MALE)) ||
+    (person2 && person2.gender === GENDER_MALE && (!person1 || person1.gender === GENDER_FEMALE));
+  if (shouldSwap) {
     return { person1Id: person2Id, person2Id: person1Id };
   }
   return { person1Id, person2Id };
