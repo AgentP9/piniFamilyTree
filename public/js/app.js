@@ -21,6 +21,8 @@ const GENDER_LABELS = {
   [GENDER_MALE]: 'Male',
   [GENDER_FEMALE]: 'Female'
 };
+const DEFAULT_COUPLE_PERSON1_GENDER = GENDER_MALE;
+const DEFAULT_COUPLE_PERSON2_GENDER = GENDER_FEMALE;
 const PERSON_NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 /* ── App state ────────────────────────────────────────────── */
@@ -157,10 +159,9 @@ function getSortedPersons(persons = data.persons) {
 function getCanonicalCouplePersonIds(person1Id, person2Id, personLookup = getPerson) {
   const person1 = personLookup(person1Id);
   const person2 = personLookup(person2Id);
-  if ((person1 && person1.gender === GENDER_MALE) || (person2 && person2.gender === GENDER_FEMALE)) {
-    return { person1Id, person2Id };
-  }
-  if ((person1 && person1.gender === GENDER_FEMALE) || (person2 && person2.gender === GENDER_MALE)) {
+  const person1IsFemale = person1 && person1.gender === GENDER_FEMALE;
+  const person2IsMale = person2 && person2.gender === GENDER_MALE;
+  if ((person1IsFemale && person2IsMale) || (person1IsFemale && !person2) || (!person1 && person2IsMale)) {
     return { person1Id: person2Id, person2Id: person1Id };
   }
   return { person1Id, person2Id };
@@ -360,6 +361,7 @@ function renderSiblingGroupsList() {
 
 /* ── Populate <select> elements ───────────────────────────── */
 function populateSelects() {
+  normalizeCouplePersonSelectValues();
   populateCouplePersonSelects();
 
   // Child dropdown: free dwellers (not already registered as a child of any couple).
@@ -378,15 +380,17 @@ function populateSelects() {
   populateSiblingPersonSelects();
 }
 
-function populateCouplePersonSelects() {
+function normalizeCouplePersonSelectValues() {
   const normalizedSelection = getCanonicalCouplePersonIds(couplePerson1Sel.value, couplePerson2Sel.value);
-  if (normalizedSelection.person1Id !== couplePerson1Sel.value) couplePerson1Sel.value = normalizedSelection.person1Id || '';
-  if (normalizedSelection.person2Id !== couplePerson2Sel.value) couplePerson2Sel.value = normalizedSelection.person2Id || '';
+  couplePerson1Sel.value = normalizedSelection.person1Id || '';
+  couplePerson2Sel.value = normalizedSelection.person2Id || '';
+}
 
+function populateCouplePersonSelects() {
   const person1 = getPerson(couplePerson1Sel.value);
   const person2 = getPerson(couplePerson2Sel.value);
-  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : GENDER_MALE;
-  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : GENDER_FEMALE;
+  const person1RequiredGender = person2 ? oppositeGender(person2.gender) : DEFAULT_COUPLE_PERSON1_GENDER;
+  const person2RequiredGender = person1 ? oppositeGender(person1.gender) : DEFAULT_COUPLE_PERSON2_GENDER;
 
   // Pre-compute relationship sets to avoid redundant graph traversal per candidate
   const p1Ancestors   = person1 ? getAncestors(person1.id)   : new Set();
@@ -754,6 +758,7 @@ function applyPersonToCoupleForm(personId) {
 
   couplePerson1Sel.value = normalizedSelection.person1Id || '';
   couplePerson2Sel.value = normalizedSelection.person2Id || '';
+  normalizeCouplePersonSelectValues();
   populateCouplePersonSelects();
 }
 
@@ -821,10 +826,12 @@ createCoupleForm.addEventListener('submit', (e) => {
 });
 
 couplePerson1Sel.addEventListener('change', () => {
+  normalizeCouplePersonSelectValues();
   populateCouplePersonSelects();
 });
 
 couplePerson2Sel.addEventListener('change', () => {
+  normalizeCouplePersonSelectValues();
   populateCouplePersonSelects();
 });
 
