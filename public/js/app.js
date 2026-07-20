@@ -161,7 +161,11 @@ function getCanonicalCouplePersonIds(person1Id, person2Id, personLookup = getPer
   const person2 = personLookup(person2Id);
   const person1IsFemale = person1 && person1.gender === GENDER_FEMALE;
   const person2IsMale = person2 && person2.gender === GENDER_MALE;
-  if ((person1IsFemale && person2IsMale) || (person1IsFemale && !person2) || (!person1 && person2IsMale)) {
+  const femaleIsInFirstSlot = person1IsFemale;
+  const maleIsInSecondSlot = person2IsMale;
+  const loneFemaleIsInFirstSlot = person1IsFemale && !person2;
+  const loneMaleIsInSecondSlot = !person1 && person2IsMale;
+  if ((femaleIsInFirstSlot && maleIsInSecondSlot) || loneFemaleIsInFirstSlot || loneMaleIsInSecondSlot) {
     return { person1Id: person2Id, person2Id: person1Id };
   }
   return { person1Id, person2Id };
@@ -191,9 +195,10 @@ function coupleName(couple) {
 }
 
 function getSortedCouples(couples = data.couples) {
+  const coupleNames = new Map(couples.map((couple) => [couple.id, coupleName(couple)]));
   return [...couples].sort((a, b) => {
-    const aName = coupleName(a);
-    const bName = coupleName(b);
+    const aName = coupleNames.get(a.id) || '';
+    const bName = coupleNames.get(b.id) || '';
     return PERSON_NAME_COLLATOR.compare(aName, bName) || PERSON_NAME_COLLATOR.compare(a.id, b.id);
   });
 }
@@ -743,6 +748,7 @@ function applyPersonToCoupleForm(personId) {
   const current1 = couplePerson1Sel.value;
   const current2 = couplePerson2Sel.value;
   const currentOtherPersonId = person.gender === GENDER_MALE ? current2 : current1;
+  // Mirror the canonical couple ordering used throughout the app: person1 = male, person2 = female.
   const normalizedSelection = person.gender === GENDER_MALE
     ? { person1Id: personId, person2Id: currentOtherPersonId }
     : { person1Id: currentOtherPersonId, person2Id: personId };
