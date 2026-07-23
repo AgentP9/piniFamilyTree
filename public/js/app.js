@@ -541,6 +541,12 @@ function enhanceDiagramInteractivity() {
     }
     if (selectedPersonId === person.id) {
       node.classList.add('pft-node--active');
+    } else if (selectedPersonId) {
+      if (canFormCouple(selectedPersonId, person.id)) {
+        node.classList.add('pft-node--eligible');
+      } else {
+        node.classList.add('pft-node--dimmed');
+      }
     } else if (selectedCoupleId) {
       const selectedCouple = getCouple(selectedCoupleId);
       if (selectedCouple && (person.id === selectedCouple.person1Id || person.id === selectedCouple.person2Id)) {

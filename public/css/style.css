@@ -763,6 +763,17 @@ body.sidebar-hidden .sidebar {
   filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.38));
 }
 
+.mermaid-container g.pft-node--eligible :is(rect, circle, ellipse, polygon, path) {
+  stroke-dasharray: 6 3;
+  stroke-width: 2.25px;
+  filter: drop-shadow(0 0 9px rgba(127, 255, 0, 0.45));
+}
+
+.mermaid-container g.pft-node--dimmed {
+  opacity: 0.42;
+  filter: saturate(0.45);
+}
+
 /* ---------- empty state ---------- */
 .empty-state {
   text-align: center;
