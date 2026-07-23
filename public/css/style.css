@@ -43,6 +43,8 @@
   --success: #4ade80;
   --danger:  #f87171;
   --warning: #fbbf24;
+  --dimmed-opacity: 0.42;
+  --dimmed-saturation: 0.45;
 
   --radius:    12px;
   --radius-lg: 18px;
@@ -683,8 +685,8 @@ body.sidebar-hidden .sidebar {
 }
 
 .person-chip.is-dimmed {
-  opacity: 0.42;
-  filter: saturate(0.45);
+  opacity: var(--dimmed-opacity);
+  filter: saturate(var(--dimmed-saturation));
 }
 
 /* ---------- sibling group list & chips ---------- */
@@ -770,8 +772,8 @@ body.sidebar-hidden .sidebar {
 }
 
 .mermaid-container g.pft-node--dimmed {
-  opacity: 0.42;
-  filter: saturate(0.45);
+  opacity: var(--dimmed-opacity);
+  filter: saturate(var(--dimmed-saturation));
 }
 
 /* ---------- empty state ---------- */

@@ -411,7 +411,7 @@ function populateCouplePersonSelects() {
     couplePerson1Sel,
     (person) => {
       if (person1RequiredGender && person.gender !== person1RequiredGender) return false;
-      if (isPersonInCouple(person.id)) return false;
+      if (hasExistingCouple(person.id)) return false;
       if (!person2) return true;
       return !p2Ancestors.has(person.id) &&
              !p2Descendants.has(person.id) &&
@@ -424,7 +424,7 @@ function populateCouplePersonSelects() {
     couplePerson2Sel,
     (person) => {
       if (person2RequiredGender && person.gender !== person2RequiredGender) return false;
-      if (isPersonInCouple(person.id)) return false;
+      if (hasExistingCouple(person.id)) return false;
       if (!person1) return true;
       return !p1Ancestors.has(person.id) &&
              !p1Descendants.has(person.id) &&
@@ -707,7 +707,7 @@ function coupleExists(person1Id, person2Id) {
   );
 }
 
-function isPersonInCouple(personId) {
+function hasExistingCouple(personId) {
   return data.couples.some((c) => c.person1Id === personId || c.person2Id === personId);
 }
 
@@ -718,7 +718,7 @@ function canFormCouple(person1Id, person2Id) {
   if (!person1 || !person2) return false;
   if (person1.gender === person2.gender) return false;
   if (coupleExists(person1Id, person2Id)) return false;
-  if (isPersonInCouple(person1Id) || isPersonInCouple(person2Id)) return false;
+  if (hasExistingCouple(person1Id) || hasExistingCouple(person2Id)) return false;
   if (getAncestors(person1Id).has(person2Id) || getAncestors(person2Id).has(person1Id)) return false;
   if (areSiblings(person1Id, person2Id)) return false;
   if (areCousins(person1Id, person2Id)) return false;
@@ -863,7 +863,7 @@ createCoupleForm.addEventListener('submit', (e) => {
   if (!canFormCouple(p1, p2)) {
     if (coupleExists(p1, p2)) {
       showToast('This couple already exists', 'error');
-    } else if (isPersonInCouple(p1) || isPersonInCouple(p2)) {
+    } else if (hasExistingCouple(p1) || hasExistingCouple(p2)) {
       showToast('Cannot form a couple when one or both dwellers are already in a couple', 'error');
     } else if (getAncestors(p1).has(p2) || getAncestors(p2).has(p1)) {
       showToast('Cannot form a couple between (grand-)parents and (grand-)children', 'error');
