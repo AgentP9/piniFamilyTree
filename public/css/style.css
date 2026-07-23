@@ -269,6 +269,12 @@ body.sidebar-hidden .sidebar {
   50% { opacity: 0.55; text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .couple-capacity-indicator.is-warning {
+    animation: none;
+  }
+}
+
 /* ---------- count badge ---------- */
 .count-badge {
   display: inline-flex;
