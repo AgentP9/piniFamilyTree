@@ -401,9 +401,11 @@ function populateCouplePersonSelects() {
   const p1Ancestors   = person1 ? getAncestors(person1.id)   : new Set();
   const p1Descendants = person1 ? getDescendants(person1.id) : new Set();
   const p1Siblings    = person1 ? getSiblings(person1.id)    : new Set();
+  const p1Cousins     = person1 ? getCousins(person1.id)     : new Set();
   const p2Ancestors   = person2 ? getAncestors(person2.id)   : new Set();
   const p2Descendants = person2 ? getDescendants(person2.id) : new Set();
   const p2Siblings    = person2 ? getSiblings(person2.id)    : new Set();
+  const p2Cousins     = person2 ? getCousins(person2.id)     : new Set();
 
   populatePersonSelect(
     couplePerson1Sel,
@@ -413,7 +415,8 @@ function populateCouplePersonSelects() {
       if (!person2) return true;
       return !p2Ancestors.has(person.id) &&
              !p2Descendants.has(person.id) &&
-             !p2Siblings.has(person.id);
+             !p2Siblings.has(person.id) &&
+             !p2Cousins.has(person.id);
     },
     partnerPlaceholder(person1RequiredGender)
   );
@@ -425,7 +428,8 @@ function populateCouplePersonSelects() {
       if (!person1) return true;
       return !p1Ancestors.has(person.id) &&
              !p1Descendants.has(person.id) &&
-             !p1Siblings.has(person.id);
+             !p1Siblings.has(person.id) &&
+             !p1Cousins.has(person.id);
     },
     partnerPlaceholder(person2RequiredGender)
   );
@@ -641,6 +645,18 @@ function areSiblings(id1, id2) {
   );
 }
 
+/** Returns a Set of all parent IDs of personId (0..n). */
+function getParentIds(personId) {
+  const parentIds = new Set();
+  data.couples.forEach((c) => {
+    if ((c.childIds || []).includes(personId)) {
+      parentIds.add(c.person1Id);
+      parentIds.add(c.person2Id);
+    }
+  });
+  return parentIds;
+}
+
 /** Returns a Set of all sibling IDs (shared parent couple or explicit sibling group) of personId. */
 function getSiblings(personId) {
   const siblings = new Set();
@@ -655,6 +671,27 @@ function getSiblings(personId) {
     }
   });
   return siblings;
+}
+
+/** Returns a Set of first cousin IDs (children of siblings of parents) of personId. */
+function getCousins(personId) {
+  const cousins = new Set();
+  getParentIds(personId).forEach((parentId) => {
+    getSiblings(parentId).forEach((auntOrUncleId) => {
+      data.couples.forEach((c) => {
+        if (c.person1Id === auntOrUncleId || c.person2Id === auntOrUncleId) {
+          (c.childIds || []).forEach((childId) => {
+            if (childId !== personId) cousins.add(childId);
+          });
+        }
+      });
+    });
+  });
+  return cousins;
+}
+
+function areCousins(id1, id2) {
+  return getCousins(id1).has(id2) || getCousins(id2).has(id1);
 }
 
 function coupleExists(person1Id, person2Id) {
@@ -678,6 +715,7 @@ function canFormCouple(person1Id, person2Id) {
   if (isPersonInCouple(person1Id) || isPersonInCouple(person2Id)) return false;
   if (getAncestors(person1Id).has(person2Id) || getAncestors(person2Id).has(person1Id)) return false;
   if (areSiblings(person1Id, person2Id)) return false;
+  if (areCousins(person1Id, person2Id)) return false;
   return true;
 }
 
@@ -825,6 +863,8 @@ createCoupleForm.addEventListener('submit', (e) => {
       showToast('Cannot form a couple between (grand-)parents and (grand-)children', 'error');
     } else if (areSiblings(p1, p2)) {
       showToast('Cannot form a couple between siblings', 'error');
+    } else if (areCousins(p1, p2)) {
+      showToast('Cannot form a couple between cousins', 'error');
     } else {
       showToast('This couple is not allowed', 'error');
     }

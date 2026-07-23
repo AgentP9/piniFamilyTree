@@ -9,7 +9,7 @@ A Docker-based PWA for visualising **Fallout Shelter** vault dweller family tree
 - **Form couples** – unite two dwellers of opposite genders into a couple.
   - Couples are normalized and displayed consistently as **male ⚭ female**.
   - A dweller can only be part of one couple.
-  - Forming a couple between (grand-)parents and (grand-)children or between siblings is **prohibited**.
+  - Forming a couple between (grand-)parents and (grand-)children, siblings, or cousins is **prohibited**.
 - **Register children** – assign a dweller as the child of a couple.
   - Dwellers who are already in their own couple can also be registered as children of another couple (representing their parents).
   - A dweller can only have one set of registered parents.
