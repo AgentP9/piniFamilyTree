@@ -43,6 +43,7 @@
   --success: #4ade80;
   --danger:  #f87171;
   --warning: #fbbf24;
+  --warning-glow: rgba(251, 191, 36, 0.5);
   --dimmed-opacity: 0.42;
   --dimmed-saturation: 0.45;
 
@@ -266,7 +267,7 @@ body.sidebar-hidden .sidebar {
 
 @keyframes couple-capacity-pulse {
   0%, 100% { opacity: 1; text-shadow: none; }
-  50% { opacity: 0.55; text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
+  50% { opacity: 0.55; text-shadow: 0 0 12px var(--warning-glow); }
 }
 
 @media (prefers-reduced-motion: reduce) {
