@@ -735,11 +735,31 @@ function countAvailableCouplePairs() {
   const availableFemales = data.persons.filter(
     (person) => person.gender === GENDER_FEMALE && !hasExistingCouple(person.id)
   );
+  if (availableMales.length === 0 || availableFemales.length === 0) return 0;
+
+  const relationshipCache = new Map();
+  const getRelationshipSets = (personId) => {
+    if (!relationshipCache.has(personId)) {
+      relationshipCache.set(personId, {
+        ancestors: getAncestors(personId),
+        descendants: getDescendants(personId),
+        siblings: getSiblings(personId),
+        cousins: getCousins(personId)
+      });
+    }
+    return relationshipCache.get(personId);
+  };
 
   let count = 0;
   availableMales.forEach((male) => {
+    const maleRelations = getRelationshipSets(male.id);
     availableFemales.forEach((female) => {
-      if (canFormCouple(male.id, female.id)) count += 1;
+      const femaleRelations = getRelationshipSets(female.id);
+      if (maleRelations.ancestors.has(female.id) || femaleRelations.ancestors.has(male.id)) return;
+      if (maleRelations.descendants.has(female.id) || femaleRelations.descendants.has(male.id)) return;
+      if (maleRelations.siblings.has(female.id) || femaleRelations.siblings.has(male.id)) return;
+      if (maleRelations.cousins.has(female.id) || femaleRelations.cousins.has(male.id)) return;
+      count += 1;
     });
   });
   return count;
