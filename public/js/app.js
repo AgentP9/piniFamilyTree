@@ -21,6 +21,7 @@ const GENDER_LABELS = {
   [GENDER_MALE]: 'Male',
   [GENDER_FEMALE]: 'Female'
 };
+const COUPLE_CAPACITY_WARNING_THRESHOLD = 10;
 const PERSON_NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 /* ── App state ────────────────────────────────────────────── */
@@ -54,6 +55,7 @@ const siblingGroupsList = document.getElementById('sibling-groups-list');
 const personsCount     = document.getElementById('persons-count');
 const couplesCount     = document.getElementById('couples-count');
 const siblingGroupsCount = document.getElementById('sibling-groups-count');
+const coupleCapacityIndicator = document.getElementById('couple-capacity-indicator');
 
 const mermaidDiagram   = document.getElementById('mermaid-diagram');
 const mermaidCodePre   = document.getElementById('mermaid-code');
@@ -276,6 +278,7 @@ function renderView() {
   renderCouplesList();
   renderSiblingGroupsList();
   populateSelects();
+  renderCoupleCapacityIndicator();
   renderDiagram();
   clearFocusBtn.hidden = !selectedPersonId && !selectedCoupleId;
 }
@@ -723,6 +726,33 @@ function canFormCouple(person1Id, person2Id) {
   if (areSiblings(person1Id, person2Id)) return false;
   if (areCousins(person1Id, person2Id)) return false;
   return true;
+}
+
+function countAvailableCouplePairs() {
+  const availableMales = data.persons.filter(
+    (person) => person.gender === GENDER_MALE && !hasExistingCouple(person.id)
+  );
+  const availableFemales = data.persons.filter(
+    (person) => person.gender === GENDER_FEMALE && !hasExistingCouple(person.id)
+  );
+
+  let count = 0;
+  availableMales.forEach((male) => {
+    availableFemales.forEach((female) => {
+      if (canFormCouple(male.id, female.id)) count += 1;
+    });
+  });
+  return count;
+}
+
+function renderCoupleCapacityIndicator() {
+  if (!coupleCapacityIndicator) return;
+  const remainingPairs = countAvailableCouplePairs();
+  const label = remainingPairs === 1
+    ? '1 more pair can be formed'
+    : `${remainingPairs} more pairs can be formed`;
+  coupleCapacityIndicator.textContent = label;
+  coupleCapacityIndicator.classList.toggle('is-warning', remainingPairs < COUPLE_CAPACITY_WARNING_THRESHOLD);
 }
 
 function canRegisterChild(coupleId, childId, registeredChildIds = getRegisteredChildIds()) {

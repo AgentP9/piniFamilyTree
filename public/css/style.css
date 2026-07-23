@@ -252,6 +252,23 @@ body.sidebar-hidden .sidebar {
   margin-bottom: 1rem;
 }
 
+.couple-capacity-indicator {
+  margin: -0.45rem 0 0.9rem;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+
+.couple-capacity-indicator.is-warning {
+  color: var(--warning);
+  animation: couple-capacity-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes couple-capacity-pulse {
+  0%, 100% { opacity: 1; text-shadow: none; }
+  50% { opacity: 0.55; text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
+}
+
 /* ---------- count badge ---------- */
 .count-badge {
   display: inline-flex;
