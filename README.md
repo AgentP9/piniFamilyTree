@@ -13,8 +13,8 @@ A Docker-based PWA for visualising **Fallout Shelter** vault dweller family tree
   - The form shows a live **remaining pairs** indicator (how many additional valid couples can still be formed).
   - When remaining valid pairs drop below **10**, the indicator becomes a pulsating warning.
 - **Register children** – assign a dweller as the child of a couple.
+  - A dweller can only be registered as a child of one couple.
   - Dwellers who are already in their own couple can also be registered as children of another couple (representing their parents).
-  - A dweller can only have one set of registered parents.
 - **Link siblings** – explicitly mark two or more dwellers as siblings without needing a known parent couple.
   - Works with any dwellers regardless of their existing couple or child status.
   - Groups auto-merge: adding A↔B and then B↔C results in one shared sibling group {A, B, C}.

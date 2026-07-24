@@ -231,6 +231,10 @@ function getRegisteredChildIds() {
   return new Set(data.couples.flatMap((couple) => couple.childIds || []));
 }
 
+function getChildParentCouple(childId) {
+  return data.couples.find((couple) => (couple.childIds || []).includes(childId)) || null;
+}
+
 function getCoupledPersonIds() {
   return new Set(data.couples.flatMap((couple) => [couple.person1Id, couple.person2Id]));
 }
@@ -781,6 +785,8 @@ function canRegisterChild(coupleId, childId, registeredChildIds = getRegisteredC
   if (!couple || !getPerson(childId)) return false;
   if (couple.person1Id === childId || couple.person2Id === childId) return false;
   if ((couple.childIds || []).includes(childId)) return false;
+  const existingParentCouple = getChildParentCouple(childId);
+  if (existingParentCouple && existingParentCouple.id !== coupleId) return false;
   return !registeredChildIds.has(childId);
 }
 
@@ -958,18 +964,22 @@ addChildForm.addEventListener('submit', (e) => {
 
   const couple = data.couples.find((c) => c.id === coupleId);
   if (!couple) return;
+  const childParentCouple = getChildParentCouple(childId);
 
   if (!canRegisterChild(coupleId, childId)) {
     if (couple.person1Id === childId || couple.person2Id === childId) {
       showToast('A parent cannot be their own child', 'error');
-    } else if (couple.childIds.includes(childId)) {
+    } else if ((couple.childIds || []).includes(childId)) {
       showToast('This person is already a child of this couple', 'error');
+    } else if (childParentCouple) {
+      showToast('This person is already registered as a child of another couple', 'error');
     } else {
       showToast('This dweller is not available as a child', 'error');
     }
     return;
   }
 
+  if (!Array.isArray(couple.childIds)) couple.childIds = [];
   couple.childIds.push(childId);
   addChildForm.reset();
   selectedCoupleId = coupleId;
