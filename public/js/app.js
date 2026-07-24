@@ -257,34 +257,43 @@ function getSelectedSiblingGroups() {
   return selectedSiblingGroupIds.map((groupId) => getSiblingGroup(groupId)).filter(Boolean);
 }
 
+function hasOnlyOneSelectedPerson() {
+  return selectedPersonIds.length === 1 && selectedCoupleIds.length === 0 && selectedSiblingGroupIds.length === 0;
+}
+
 function getSingleSelectedPersonId() {
-  if (selectedCoupleIds.length > 0 || selectedSiblingGroupIds.length > 0 || selectedPersonIds.length !== 1) return null;
-  return selectedPersonIds[0];
+  return hasOnlyOneSelectedPerson() ? selectedPersonIds[0] : null;
+}
+
+function hasOnlyOneSelectedCouple() {
+  return selectedCoupleIds.length === 1 && selectedPersonIds.length === 0 && selectedSiblingGroupIds.length === 0;
 }
 
 function getSingleSelectedCouple() {
-  if (selectedPersonIds.length > 0 || selectedSiblingGroupIds.length > 0 || selectedCoupleIds.length !== 1) return null;
-  return getCouple(selectedCoupleIds[0]);
+  return hasOnlyOneSelectedCouple() ? getCouple(selectedCoupleIds[0]) : null;
 }
 
-function isPersonInSelectedCouples(personId, selectedCouples = getSelectedCouples()) {
+function isPersonInSelectedCouples(personId, selectedCouples) {
   return selectedCouples.some((couple) => couple.person1Id === personId || couple.person2Id === personId);
 }
 
-function isPersonInSelectedSiblingGroups(personId, selectedSiblingGroups = getSelectedSiblingGroups()) {
+function isPersonInSelectedSiblingGroups(personId, selectedSiblingGroups) {
   return selectedSiblingGroups.some((group) => (group.personIds || []).includes(personId));
 }
 
 function getFocusedPersonIds() {
   const personIds = new Set(selectedPersonIds);
-  getSelectedCouples().forEach((couple) => {
+  const selectedCouples = getSelectedCouples();
+  const selectedSiblingGroups = getSelectedSiblingGroups();
+
+  selectedCouples.forEach((couple) => {
     personIds.add(couple.person1Id);
     personIds.add(couple.person2Id);
   });
-  getSelectedSiblingGroups().forEach((group) => {
+  selectedSiblingGroups.forEach((group) => {
     (group.personIds || []).forEach((personId) => personIds.add(personId));
   });
-  return personIds;
+  return Array.from(personIds);
 }
 
 function getRegisteredChildIds() {
@@ -932,7 +941,7 @@ function collectPerspectiveData(rootPersonIds, anchoredCoupleId = null) {
 }
 
 function getDiagramData() {
-  const focusedPersonIds = Array.from(getFocusedPersonIds());
+  const focusedPersonIds = getFocusedPersonIds();
   if (focusedPersonIds.length > 0) return collectPerspectiveData(focusedPersonIds);
   return data;
 }
@@ -1088,7 +1097,7 @@ linkSiblingsForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const sib1Id = siblingPerson1Sel.value;
   const sib2Id = siblingPerson2Sel.value;
-  let selectedSiblingGroupId = null;
+  let siblingGroupIdToSelect = null;
 
   if (!sib1Id || !sib2Id) { showToast('Please select two people', 'error'); return; }
   if (sib1Id === sib2Id)  { showToast('A person cannot be their own sibling', 'error'); return; }
@@ -1106,15 +1115,15 @@ linkSiblingsForm.addEventListener('submit', (e) => {
     // Neither is in an explicit sibling group — create a new one
     const newGroup = { id: genId(), personIds: [sib1Id, sib2Id] };
     groups.push(newGroup);
-    selectedSiblingGroupId = newGroup.id;
+    siblingGroupIdToSelect = newGroup.id;
   } else if (group1Idx !== -1 && group2Idx === -1) {
     // sib2 joins sib1's existing group
     groups[group1Idx].personIds.push(sib2Id);
-    selectedSiblingGroupId = groups[group1Idx].id;
+    siblingGroupIdToSelect = groups[group1Idx].id;
   } else if (group1Idx === -1 && group2Idx !== -1) {
     // sib1 joins sib2's existing group
     groups[group2Idx].personIds.push(sib1Id);
-    selectedSiblingGroupId = groups[group2Idx].id;
+    siblingGroupIdToSelect = groups[group2Idx].id;
   } else if (group1Idx !== group2Idx) {
     // They are in different groups — merge them
     const merged = {
@@ -1125,15 +1134,15 @@ linkSiblingsForm.addEventListener('submit', (e) => {
     groups.splice(higherIndex, 1);
     groups.splice(lowerIndex, 1);
     groups.push(merged);
-    selectedSiblingGroupId = merged.id;
+    siblingGroupIdToSelect = merged.id;
   } else {
-    selectedSiblingGroupId = groups[group1Idx].id;
+    siblingGroupIdToSelect = groups[group1Idx].id;
   }
 
   data.siblingGroups = groups;
   selectedPersonIds = [];
   selectedCoupleIds = [];
-  selectedSiblingGroupIds = selectedSiblingGroupId ? [selectedSiblingGroupId] : [];
+  selectedSiblingGroupIds = siblingGroupIdToSelect ? [siblingGroupIdToSelect] : [];
   linkSiblingsForm.reset();
   refresh();
   showToast(`${getPersonName(sib1Id)} and ${getPersonName(sib2Id)} linked as siblings`, 'success');
