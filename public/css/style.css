@@ -797,13 +797,29 @@ body.sidebar-hidden .sidebar {
 
 .mermaid-container g.pft-node--eligible :is(rect, circle, ellipse, polygon, path) {
   stroke-dasharray: 6 3;
-  stroke-width: 2.25px;
-  filter: drop-shadow(0 0 9px rgba(127, 255, 0, 0.45));
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 14px rgba(127, 255, 0, 0.68));
+  animation: mermaid-eligible-pulse 1.2s ease-in-out infinite;
+}
+
+.mermaid-container g.pft-node--eligible :is(text, tspan) {
+  font-weight: 700;
 }
 
 .mermaid-container g.pft-node--dimmed {
-  opacity: var(--dimmed-opacity);
-  filter: saturate(var(--dimmed-saturation));
+  opacity: 0.24;
+  filter: saturate(0.2) brightness(0.74);
+}
+
+@keyframes mermaid-eligible-pulse {
+  0%, 100% { stroke-width: 3px; }
+  50% { stroke-width: 3.8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-container g.pft-node--eligible :is(rect, circle, ellipse, polygon, path) {
+    animation: none;
+  }
 }
 
 /* ---------- empty state ---------- */
