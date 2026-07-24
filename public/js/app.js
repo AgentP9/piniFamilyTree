@@ -570,14 +570,28 @@ function populateSiblingPersonSelects() {
   siblingPerson2Sel.value = data.persons.some((p) => p.id === sel2Current) ? sel2Current : '';
 }
 
+function syncCoupleFormWithSelectedPersons() {
+  couplePerson1Sel.value = '';
+  couplePerson2Sel.value = '';
+  selectedPersonIds.forEach((personId) => applyPersonToCoupleForm(personId));
+  if (selectedPersonIds.length === 0) {
+    normalizeCouplePersonSelectValues();
+    populateCouplePersonSelects();
+  }
+}
+
+function syncChildFormWithSelectedCouples() {
+  childCoupleSel.value = selectedCoupleIds[selectedCoupleIds.length - 1] || '';
+}
+
 function selectPerson(personId) {
   if (!getPerson(personId)) return;
   if (isPersonSelected(personId)) {
     selectedPersonIds = selectedPersonIds.filter((id) => id !== personId);
   } else {
     selectedPersonIds = [...selectedPersonIds, personId];
-    applyPersonToCoupleForm(personId);
   }
+  syncCoupleFormWithSelectedPersons();
   renderView();
 }
 
@@ -588,8 +602,8 @@ function selectCouple(coupleId) {
     selectedCoupleIds = selectedCoupleIds.filter((id) => id !== coupleId);
   } else {
     selectedCoupleIds = [...selectedCoupleIds, coupleId];
-    childCoupleSel.value = coupleId;
   }
+  syncChildFormWithSelectedCouples();
   renderView();
 }
 
