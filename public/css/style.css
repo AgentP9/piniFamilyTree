@@ -690,13 +690,15 @@ body.sidebar-hidden .sidebar {
 }
 
 .person-chip:focus-visible,
-.couple-chip:focus-visible {
+.couple-chip:focus-visible,
+.sibling-group-chip:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
 .person-chip.is-active,
-.couple-chip.is-active {
+.couple-chip.is-active,
+.sibling-group-chip.is-active {
   transform: translateY(-1px);
 }
 
@@ -757,6 +759,11 @@ body.sidebar-hidden .sidebar {
 .sibling-group-chip:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.25);
+}
+
+.sibling-group-chip.is-active {
+  border-color: rgba(192, 132, 252, 0.9);
+  box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.22), 0 0 18px rgba(168, 85, 247, 0.3);
 }
 
 /* ---------- tree section ---------- */

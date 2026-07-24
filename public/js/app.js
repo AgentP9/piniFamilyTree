@@ -29,8 +29,9 @@ let currentVault = null;
 let data = { persons: [], couples: [], siblingGroups: [] };
 let renderCounter = 0; // unique IDs for mermaid.render()
 let legacyIdCounter = 0;
-let selectedPersonId = null;
-let selectedCoupleId = null;
+let selectedPersonIds = [];
+let selectedCoupleIds = [];
+let selectedSiblingGroupIds = [];
 
 /* ── DOM refs ─────────────────────────────────────────────── */
 const addPersonForm    = document.getElementById('add-person-form');
@@ -222,9 +223,68 @@ function getCouple(id) {
   return data.couples.find((x) => x.id === id) || null;
 }
 
+function getSiblingGroup(id) {
+  return (data.siblingGroups || []).find((x) => x.id === id) || null;
+}
+
 function syncSelectionState() {
-  if (selectedPersonId && !getPerson(selectedPersonId)) selectedPersonId = null;
-  if (selectedCoupleId && !getCouple(selectedCoupleId)) selectedCoupleId = null;
+  selectedPersonIds = selectedPersonIds.filter((personId) => !!getPerson(personId));
+  selectedCoupleIds = selectedCoupleIds.filter((coupleId) => !!getCouple(coupleId));
+  selectedSiblingGroupIds = selectedSiblingGroupIds.filter((groupId) => !!getSiblingGroup(groupId));
+}
+
+function hasAnySelection() {
+  return selectedPersonIds.length > 0 || selectedCoupleIds.length > 0 || selectedSiblingGroupIds.length > 0;
+}
+
+function isPersonSelected(personId) {
+  return selectedPersonIds.includes(personId);
+}
+
+function isCoupleSelected(coupleId) {
+  return selectedCoupleIds.includes(coupleId);
+}
+
+function isSiblingGroupSelected(groupId) {
+  return selectedSiblingGroupIds.includes(groupId);
+}
+
+function getSelectedCouples() {
+  return selectedCoupleIds.map((coupleId) => getCouple(coupleId)).filter(Boolean);
+}
+
+function getSelectedSiblingGroups() {
+  return selectedSiblingGroupIds.map((groupId) => getSiblingGroup(groupId)).filter(Boolean);
+}
+
+function getSingleSelectedPersonId() {
+  if (selectedCoupleIds.length > 0 || selectedSiblingGroupIds.length > 0 || selectedPersonIds.length !== 1) return null;
+  return selectedPersonIds[0];
+}
+
+function getSingleSelectedCouple() {
+  if (selectedPersonIds.length > 0 || selectedSiblingGroupIds.length > 0 || selectedCoupleIds.length !== 1) return null;
+  return getCouple(selectedCoupleIds[0]);
+}
+
+function isPersonInSelectedCouples(personId, selectedCouples = getSelectedCouples()) {
+  return selectedCouples.some((couple) => couple.person1Id === personId || couple.person2Id === personId);
+}
+
+function isPersonInSelectedSiblingGroups(personId, selectedSiblingGroups = getSelectedSiblingGroups()) {
+  return selectedSiblingGroups.some((group) => (group.personIds || []).includes(personId));
+}
+
+function getFocusedPersonIds() {
+  const personIds = new Set(selectedPersonIds);
+  getSelectedCouples().forEach((couple) => {
+    personIds.add(couple.person1Id);
+    personIds.add(couple.person2Id);
+  });
+  getSelectedSiblingGroups().forEach((group) => {
+    (group.personIds || []).forEach((personId) => personIds.add(personId));
+  });
+  return personIds;
 }
 
 function getRegisteredChildIds() {
@@ -245,23 +305,25 @@ function isSinglePerson(personId, coupledPersonIds = getCoupledPersonIds()) {
 
 function personInteractionClasses(personId) {
   const classes = [];
+  const selectedCouples = getSelectedCouples();
+  const selectedSiblingGroups = getSelectedSiblingGroups();
+  const singleSelectedPersonId = getSingleSelectedPersonId();
+  const singleSelectedCouple = getSingleSelectedCouple();
 
-  if (selectedPersonId) {
-    if (personId === selectedPersonId) {
-      classes.push('is-active');
-    } else if (canFormCouple(selectedPersonId, personId)) {
+  if (
+    isPersonSelected(personId) ||
+    isPersonInSelectedCouples(personId, selectedCouples) ||
+    isPersonInSelectedSiblingGroups(personId, selectedSiblingGroups)
+  ) {
+    classes.push('is-active');
+  } else if (singleSelectedPersonId) {
+    if (canFormCouple(singleSelectedPersonId, personId)) {
       classes.push('is-eligible');
     } else {
       classes.push('is-dimmed');
     }
-  } else if (selectedCoupleId) {
-    const selectedCouple = getCouple(selectedCoupleId);
-    if (!selectedCouple) return classes;
-    if (personId === selectedCouple.person1Id || personId === selectedCouple.person2Id) {
-      classes.push('is-active');
-    } else if (canRegisterChild(selectedCoupleId, personId)) {
-      classes.push('is-eligible');
-    }
+  } else if (singleSelectedCouple && canRegisterChild(singleSelectedCouple.id, personId)) {
+    classes.push('is-eligible');
   }
 
   return classes;
@@ -283,7 +345,7 @@ function renderView() {
   populateSelects();
   renderCoupleCapacityIndicator();
   renderDiagram();
-  clearFocusBtn.hidden = !selectedPersonId && !selectedCoupleId;
+  clearFocusBtn.hidden = !hasAnySelection();
 }
 
 function refresh() {
@@ -310,7 +372,7 @@ function renderPersonsList() {
     chip.dataset.personId = p.id;
     chip.setAttribute('tabindex', '0');
     chip.setAttribute('role', 'button');
-    chip.setAttribute('aria-pressed', String(selectedPersonId === p.id));
+    chip.setAttribute('aria-pressed', String(isPersonSelected(p.id)));
     chip.innerHTML = `
       <span class="chip-label">${p.gender === GENDER_MALE ? '♂' : '♀'} ${escapeHtml(p.name)}</span>
       <button class="btn-icon" title="Delete ${escapeHtml(p.name)}" data-delete-person="${p.id}">✕</button>
@@ -329,11 +391,11 @@ function renderCouplesList() {
   }
   getSortedCouples().forEach((c) => {
     const chip = document.createElement('span');
-    chip.className = `couple-chip${selectedCoupleId === c.id ? ' is-active' : ''}`;
+    chip.className = `couple-chip${isCoupleSelected(c.id) ? ' is-active' : ''}`;
     chip.dataset.coupleId = c.id;
     chip.setAttribute('tabindex', '0');
     chip.setAttribute('role', 'button');
-    chip.setAttribute('aria-pressed', String(selectedCoupleId === c.id));
+    chip.setAttribute('aria-pressed', String(isCoupleSelected(c.id)));
     const childCount = (c.childIds || []).length;
     chip.innerHTML = `
       <span class="chip-label">${escapeHtml(coupleName(c))}</span>
@@ -355,7 +417,11 @@ function renderSiblingGroupsList() {
   }
   groups.forEach((g) => {
     const chip = document.createElement('span');
-    chip.className = 'sibling-group-chip';
+    chip.className = `sibling-group-chip${isSiblingGroupSelected(g.id) ? ' is-active' : ''}`;
+    chip.dataset.siblingGroupId = g.id;
+    chip.setAttribute('tabindex', '0');
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('aria-pressed', String(isSiblingGroupSelected(g.id)));
     const names = (g.personIds || [])
       .map((id) => getPerson(id))
       .filter(Boolean)
@@ -497,24 +563,41 @@ function populateSiblingPersonSelects() {
 
 function selectPerson(personId) {
   if (!getPerson(personId)) return;
-  selectedPersonId = personId;
-  selectedCoupleId = null;
-  applyPersonToCoupleForm(personId);
+  if (isPersonSelected(personId)) {
+    selectedPersonIds = selectedPersonIds.filter((id) => id !== personId);
+  } else {
+    selectedPersonIds = [...selectedPersonIds, personId];
+    applyPersonToCoupleForm(personId);
+  }
   renderView();
 }
 
 function selectCouple(coupleId) {
   const couple = getCouple(coupleId);
   if (!couple) return;
-  selectedCoupleId = coupleId;
-  selectedPersonId = null;
-  childCoupleSel.value = coupleId;
+  if (isCoupleSelected(coupleId)) {
+    selectedCoupleIds = selectedCoupleIds.filter((id) => id !== coupleId);
+  } else {
+    selectedCoupleIds = [...selectedCoupleIds, coupleId];
+    childCoupleSel.value = coupleId;
+  }
+  renderView();
+}
+
+function selectSiblingGroup(groupId) {
+  if (!getSiblingGroup(groupId)) return;
+  if (isSiblingGroupSelected(groupId)) {
+    selectedSiblingGroupIds = selectedSiblingGroupIds.filter((id) => id !== groupId);
+  } else {
+    selectedSiblingGroupIds = [...selectedSiblingGroupIds, groupId];
+  }
   renderView();
 }
 
 function clearSelection() {
-  selectedPersonId = null;
-  selectedCoupleId = null;
+  selectedPersonIds = [];
+  selectedCoupleIds = [];
+  selectedSiblingGroupIds = [];
   renderView();
 }
 
@@ -532,12 +615,16 @@ function findDiagramNode(rawId) {
   );
 }
 
-function enhanceDiagramInteractivity() {
+function enhanceDiagramInteractivity(diagramData = getDiagramData()) {
   mermaidDiagram.querySelectorAll('g.node').forEach((node) => {
     node.classList.add('pft-node--interactive');
   });
 
   const coupledPersonIds = getCoupledPersonIds();
+  const selectedCouples = getSelectedCouples();
+  const selectedSiblingGroups = getSelectedSiblingGroups();
+  const singleSelectedPersonId = getSingleSelectedPersonId();
+  const singleSelectedCouple = getSingleSelectedCouple();
   data.persons.forEach((person) => {
     const node = findDiagramNode(MermaidGen.nodeId(person.id));
     if (!node) return;
@@ -545,19 +632,20 @@ function enhanceDiagramInteractivity() {
     if (isSinglePerson(person.id, coupledPersonIds)) {
       node.classList.add('pft-node--single');
     }
-    if (selectedPersonId === person.id) {
+    if (
+      isPersonSelected(person.id) ||
+      isPersonInSelectedCouples(person.id, selectedCouples) ||
+      isPersonInSelectedSiblingGroups(person.id, selectedSiblingGroups)
+    ) {
       node.classList.add('pft-node--active');
-    } else if (selectedPersonId) {
-      if (canFormCouple(selectedPersonId, person.id)) {
+    } else if (singleSelectedPersonId) {
+      if (canFormCouple(singleSelectedPersonId, person.id)) {
         node.classList.add('pft-node--eligible');
       } else {
         node.classList.add('pft-node--dimmed');
       }
-    } else if (selectedCoupleId) {
-      const selectedCouple = getCouple(selectedCoupleId);
-      if (selectedCouple && (person.id === selectedCouple.person1Id || person.id === selectedCouple.person2Id)) {
-        node.classList.add('pft-node--active');
-      }
+    } else if (singleSelectedCouple && canRegisterChild(singleSelectedCouple.id, person.id)) {
+      node.classList.add('pft-node--eligible');
     }
   });
 
@@ -565,7 +653,16 @@ function enhanceDiagramInteractivity() {
     const node = findDiagramNode(MermaidGen.pairNodeId(couple.id));
     if (!node) return;
     node.dataset.coupleId = couple.id;
-    if (selectedCoupleId === couple.id) {
+    if (isCoupleSelected(couple.id)) {
+      node.classList.add('pft-node--active');
+    }
+  });
+
+  (diagramData.siblingGroups || []).forEach((group, index) => {
+    const node = findDiagramNode(`SibGroup${index + 1}`);
+    if (!node) return;
+    node.dataset.siblingGroupId = group.id;
+    if (isSiblingGroupSelected(group.id)) {
       node.classList.add('pft-node--active');
     }
   });
@@ -573,7 +670,8 @@ function enhanceDiagramInteractivity() {
 
 /* ── Mermaid diagram ──────────────────────────────────────── */
 async function renderDiagram() {
-  const code = MermaidGen.generate(getDiagramData());
+  const diagramData = getDiagramData();
+  const code = MermaidGen.generate(diagramData);
   mermaidCodePre.textContent = code || '(empty)';
 
   if (!code) {
@@ -597,7 +695,7 @@ async function renderDiagram() {
     const id = `mermaid-svg-${++renderCounter}`;
     const { svg } = await mermaid.render(id, code);
     mermaidDiagram.innerHTML = svg;
-    enhanceDiagramInteractivity();
+    enhanceDiagramInteractivity(diagramData);
   } catch (err) {
     mermaidDiagram.innerHTML = `<div class="empty-state" style="color:var(--danger)">Diagram error: ${escapeHtml(err.message)}</div>`;
   }
@@ -834,14 +932,8 @@ function collectPerspectiveData(rootPersonIds, anchoredCoupleId = null) {
 }
 
 function getDiagramData() {
-  if (selectedPersonId) return collectPerspectiveData([selectedPersonId]);
-  const selectedCouple = selectedCoupleId ? getCouple(selectedCoupleId) : null;
-  if (selectedCouple) {
-    return collectPerspectiveData(
-      [selectedCouple.person1Id, selectedCouple.person2Id],
-      selectedCouple.id
-    );
-  }
+  const focusedPersonIds = Array.from(getFocusedPersonIds());
+  if (focusedPersonIds.length > 0) return collectPerspectiveData(focusedPersonIds);
   return data;
 }
 
@@ -934,8 +1026,9 @@ createCoupleForm.addEventListener('submit', (e) => {
   const newCouple = { id: genId(), person1Id: orderedCouple.person1Id, person2Id: orderedCouple.person2Id, childIds: [] };
   data.couples.push(newCouple);
   createCoupleForm.reset();
-  selectedPersonId = null;
-  selectedCoupleId = newCouple.id;
+  selectedPersonIds = [];
+  selectedCoupleIds = [newCouple.id];
+  selectedSiblingGroupIds = [];
   childCoupleSel.value = newCouple.id;
   refresh();
   showToast('Couple created', 'success');
@@ -979,8 +1072,9 @@ addChildForm.addEventListener('submit', (e) => {
   if (!Array.isArray(couple.childIds)) couple.childIds = [];
   couple.childIds.push(childId);
   addChildForm.reset();
-  selectedCoupleId = coupleId;
-  selectedPersonId = null;
+  selectedPersonIds = [];
+  selectedCoupleIds = [coupleId];
+  selectedSiblingGroupIds = [];
   childCoupleSel.value = coupleId;
   refresh();
   showToast(`${getPersonName(childId)} added as child`, 'success');
@@ -994,6 +1088,7 @@ linkSiblingsForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const sib1Id = siblingPerson1Sel.value;
   const sib2Id = siblingPerson2Sel.value;
+  let selectedSiblingGroupId = null;
 
   if (!sib1Id || !sib2Id) { showToast('Please select two people', 'error'); return; }
   if (sib1Id === sib2Id)  { showToast('A person cannot be their own sibling', 'error'); return; }
@@ -1009,13 +1104,17 @@ linkSiblingsForm.addEventListener('submit', (e) => {
 
   if (group1Idx === -1 && group2Idx === -1) {
     // Neither is in an explicit sibling group — create a new one
-    groups.push({ id: genId(), personIds: [sib1Id, sib2Id] });
+    const newGroup = { id: genId(), personIds: [sib1Id, sib2Id] };
+    groups.push(newGroup);
+    selectedSiblingGroupId = newGroup.id;
   } else if (group1Idx !== -1 && group2Idx === -1) {
     // sib2 joins sib1's existing group
     groups[group1Idx].personIds.push(sib2Id);
+    selectedSiblingGroupId = groups[group1Idx].id;
   } else if (group1Idx === -1 && group2Idx !== -1) {
     // sib1 joins sib2's existing group
     groups[group2Idx].personIds.push(sib1Id);
+    selectedSiblingGroupId = groups[group2Idx].id;
   } else if (group1Idx !== group2Idx) {
     // They are in different groups — merge them
     const merged = {
@@ -1026,9 +1125,15 @@ linkSiblingsForm.addEventListener('submit', (e) => {
     groups.splice(higherIndex, 1);
     groups.splice(lowerIndex, 1);
     groups.push(merged);
+    selectedSiblingGroupId = merged.id;
+  } else {
+    selectedSiblingGroupId = groups[group1Idx].id;
   }
 
   data.siblingGroups = groups;
+  selectedPersonIds = [];
+  selectedCoupleIds = [];
+  selectedSiblingGroupIds = selectedSiblingGroupId ? [selectedSiblingGroupId] : [];
   linkSiblingsForm.reset();
   refresh();
   showToast(`${getPersonName(sib1Id)} and ${getPersonName(sib2Id)} linked as siblings`, 'success');
@@ -1094,6 +1199,12 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  const siblingGroupChip = e.target.closest('.sibling-group-chip[data-sibling-group-id]');
+  if (siblingGroupChip) {
+    selectSiblingGroup(siblingGroupChip.dataset.siblingGroupId);
+    return;
+  }
+
   const personNode = e.target.closest('[data-person-id]');
   if (personNode && mermaidDiagram.contains(personNode)) {
     selectPerson(personNode.dataset.personId);
@@ -1103,6 +1214,12 @@ document.addEventListener('click', async (e) => {
   const coupleNode = e.target.closest('[data-couple-id]');
   if (coupleNode && mermaidDiagram.contains(coupleNode)) {
     selectCouple(coupleNode.dataset.coupleId);
+    return;
+  }
+
+  const siblingGroupNode = e.target.closest('[data-sibling-group-id]');
+  if (siblingGroupNode && mermaidDiagram.contains(siblingGroupNode)) {
+    selectSiblingGroup(siblingGroupNode.dataset.siblingGroupId);
   }
 });
 
@@ -1179,6 +1296,12 @@ document.addEventListener('keydown', (e) => {
   if (coupleChip) {
     e.preventDefault();
     selectCouple(coupleChip.dataset.coupleId);
+    return;
+  }
+  const siblingGroupChip = interactiveTarget.closest('.sibling-group-chip[data-sibling-group-id]');
+  if (siblingGroupChip) {
+    e.preventDefault();
+    selectSiblingGroup(siblingGroupChip.dataset.siblingGroupId);
   }
 });
 
