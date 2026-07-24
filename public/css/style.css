@@ -244,6 +244,12 @@ body.sidebar-hidden .sidebar {
 .card--siblings::before   { background: var(--sibling); }
 .card--data::before       { background: var(--text-muted); }
 
+.card--couple,
+.card--child,
+.card--siblings {
+  overflow: visible;
+}
+
 .card h2 {
   font-size: 0.88rem;
   font-weight: 700;
