@@ -778,14 +778,12 @@ function renderCoupleCapacityIndicator() {
   coupleCapacityIndicator.classList.toggle('is-warning', remainingPairs < COUPLE_CAPACITY_WARNING_THRESHOLD);
 }
 
-function canRegisterChild(coupleId, childId) {
+function canRegisterChild(coupleId, childId, existingParentCouple = getChildParentCouple(childId)) {
   if (!coupleId || !childId) return false;
   const couple = getCouple(coupleId);
   if (!couple || !getPerson(childId)) return false;
   if (couple.person1Id === childId || couple.person2Id === childId) return false;
-  if ((couple.childIds || []).includes(childId)) return false;
-  const existingParentCouple = getChildParentCouple(childId);
-  if (existingParentCouple && existingParentCouple.id !== coupleId) return false;
+  if (existingParentCouple) return false;
   return true;
 }
 
@@ -965,10 +963,10 @@ addChildForm.addEventListener('submit', (e) => {
   if (!couple) return;
   const childParentCouple = getChildParentCouple(childId);
 
-  if (!canRegisterChild(coupleId, childId)) {
+  if (!canRegisterChild(coupleId, childId, childParentCouple)) {
     if (couple.person1Id === childId || couple.person2Id === childId) {
       showToast('A parent cannot be their own child', 'error');
-    } else if ((couple.childIds || []).includes(childId)) {
+    } else if (childParentCouple && childParentCouple.id === coupleId) {
       showToast('This person is already a child of this couple', 'error');
     } else if (childParentCouple) {
       showToast('This person is already registered as a child of another couple', 'error');
