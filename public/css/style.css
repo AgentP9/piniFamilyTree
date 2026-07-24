@@ -46,6 +46,9 @@
   --warning-glow: rgba(251, 191, 36, 0.5);
   --dimmed-opacity: 0.42;
   --dimmed-saturation: 0.45;
+  --diagram-dimmed-opacity: 0.24;
+  --diagram-dimmed-saturation: 0.2;
+  --diagram-dimmed-brightness: 0.74;
 
   --radius:    12px;
   --radius-lg: 18px;
@@ -807,8 +810,8 @@ body.sidebar-hidden .sidebar {
 }
 
 .mermaid-container g.pft-node--dimmed {
-  opacity: 0.24;
-  filter: saturate(0.2) brightness(0.74);
+  opacity: var(--diagram-dimmed-opacity);
+  filter: saturate(var(--diagram-dimmed-saturation)) brightness(var(--diagram-dimmed-brightness));
 }
 
 @keyframes mermaid-eligible-pulse {
