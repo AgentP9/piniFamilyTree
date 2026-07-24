@@ -49,6 +49,9 @@ const linkSiblingsForm  = document.getElementById('link-siblings-form');
 const siblingPerson1Sel = document.getElementById('sibling-person1');
 const siblingPerson2Sel = document.getElementById('sibling-person2');
 const fullscreenBtn    = document.getElementById('fullscreen-btn');
+const zoomOutBtn       = document.getElementById('zoom-out-btn');
+const zoomInBtn        = document.getElementById('zoom-in-btn');
+const fitAllBtn        = document.getElementById('fit-all-btn');
 
 const personsList      = document.getElementById('persons-list');
 const couplesList      = document.getElementById('couples-list');
@@ -85,6 +88,14 @@ const vaultModalClose  = document.getElementById('vault-modal-close');
 
 /* ── Toast notification ───────────────────────────────────── */
 let toastTimer = null;
+const DIAGRAM_ZOOM_STEP = 1.2;
+const DIAGRAM_MIN_ZOOM = 0.35;
+const DIAGRAM_MAX_ZOOM = 3.5;
+// Keep a small visual margin when fitting the tree; 16px matches .mermaid-container padding.
+const DIAGRAM_VIEWPORT_PADDING = 16;
+let diagramZoom = 1;
+let diagramBaseSize = null;
+
 function showToast(msg, type = 'info') {
   toast.textContent = msg;
   toast.className = `toast ${type}`;
@@ -638,6 +649,66 @@ function findDiagramNode(rawId) {
   );
 }
 
+function getDiagramSvg() {
+  return mermaidDiagram.querySelector('svg');
+}
+
+function clampZoom(value) {
+  return Math.max(DIAGRAM_MIN_ZOOM, Math.min(DIAGRAM_MAX_ZOOM, value));
+}
+
+function detectDiagramBaseSize(svg) {
+  if (!svg) return null;
+  const viewBox = svg.getAttribute('viewBox');
+  if (viewBox) {
+    const rawParts = viewBox.trim().split(/\s+/);
+    if (rawParts.length === 4) {
+      const parts = rawParts.map(Number);
+      if (parts.every((part) => Number.isFinite(part)) && parts[2] > 0 && parts[3] > 0) {
+        return { width: parts[2], height: parts[3] };
+      }
+    }
+  }
+  const widthAttr = svg.getAttribute('width');
+  const heightAttr = svg.getAttribute('height');
+  const widthFromAttr = widthAttr === null ? NaN : Number(widthAttr);
+  const heightFromAttr = heightAttr === null ? NaN : Number(heightAttr);
+  const width = Number.isFinite(widthFromAttr) && widthFromAttr > 0 ? widthFromAttr : (svg.clientWidth || 0);
+  const height = Number.isFinite(heightFromAttr) && heightFromAttr > 0 ? heightFromAttr : (svg.clientHeight || 0);
+  if (width > 0 && height > 0) return { width, height };
+  return null;
+}
+
+function centerDiagramViewport() {
+  mermaidDiagram.scrollLeft = Math.max(0, (mermaidDiagram.scrollWidth - mermaidDiagram.clientWidth) / 2);
+  mermaidDiagram.scrollTop = Math.max(0, (mermaidDiagram.scrollHeight - mermaidDiagram.clientHeight) / 2);
+}
+
+function applyDiagramZoom() {
+  const svg = getDiagramSvg();
+  if (!svg || !diagramBaseSize) return;
+  svg.style.width = `${diagramBaseSize.width * diagramZoom}px`;
+  svg.style.height = `${diagramBaseSize.height * diagramZoom}px`;
+}
+
+function fitDiagramToViewport() {
+  if (!diagramBaseSize) return;
+  if (
+    mermaidDiagram.clientWidth <= DIAGRAM_VIEWPORT_PADDING ||
+    mermaidDiagram.clientHeight <= DIAGRAM_VIEWPORT_PADDING
+  ) return;
+  const availableWidth = Math.max(0, mermaidDiagram.clientWidth - DIAGRAM_VIEWPORT_PADDING);
+  const availableHeight = Math.max(0, mermaidDiagram.clientHeight - DIAGRAM_VIEWPORT_PADDING);
+  if (availableWidth === 0 || availableHeight === 0) return;
+  const fitZoom = Math.min(
+    availableWidth / diagramBaseSize.width,
+    availableHeight / diagramBaseSize.height
+  );
+  diagramZoom = clampZoom(fitZoom);
+  applyDiagramZoom();
+  centerDiagramViewport();
+}
+
 function enhanceDiagramInteractivity(diagramData = getDiagramData()) {
   mermaidDiagram.querySelectorAll('g.node').forEach((node) => {
     node.classList.add('pft-node--interactive');
@@ -698,6 +769,7 @@ async function renderDiagram() {
   mermaidCodePre.textContent = code || '(empty)';
 
   if (!code) {
+    diagramBaseSize = null;
     mermaidDiagram.innerHTML = `
       <div class="empty-state">
         <p>🏠 Add dwellers and form couples to grow your vault family tree!</p>
@@ -706,6 +778,7 @@ async function renderDiagram() {
   }
 
   if (typeof mermaid === 'undefined') {
+    diagramBaseSize = null;
     mermaidDiagram.innerHTML = `
       <div class="empty-state">
         ⚠️ Diagram library not loaded — check your internet connection.<br>
@@ -718,8 +791,11 @@ async function renderDiagram() {
     const id = `mermaid-svg-${++renderCounter}`;
     const { svg } = await mermaid.render(id, code);
     mermaidDiagram.innerHTML = svg;
+    diagramBaseSize = detectDiagramBaseSize(getDiagramSvg());
+    fitDiagramToViewport();
     enhanceDiagramInteractivity(diagramData);
   } catch (err) {
+    diagramBaseSize = null;
     mermaidDiagram.innerHTML = `<div class="empty-state" style="color:var(--danger)">Diagram error: ${escapeHtml(err.message)}</div>`;
   }
 }
@@ -1262,6 +1338,24 @@ clearFocusBtn.addEventListener('click', () => {
   clearSelection();
 });
 
+zoomInBtn.addEventListener('click', () => {
+  if (!getDiagramSvg()) return;
+  diagramZoom = clampZoom(diagramZoom * DIAGRAM_ZOOM_STEP);
+  applyDiagramZoom();
+  centerDiagramViewport();
+});
+
+zoomOutBtn.addEventListener('click', () => {
+  if (!getDiagramSvg()) return;
+  diagramZoom = clampZoom(diagramZoom / DIAGRAM_ZOOM_STEP);
+  applyDiagramZoom();
+  centerDiagramViewport();
+});
+
+fitAllBtn.addEventListener('click', () => {
+  fitDiagramToViewport();
+});
+
 /* ── Event: Export ────────────────────────────────────────── */
 exportBtn.addEventListener('click', () => {
   Storage.exportJSON(currentVault, data);
@@ -1357,6 +1451,7 @@ document.addEventListener('fullscreenchange', () => {
   const isFs = !!document.fullscreenElement;
   fullscreenBtn.innerHTML = isFs ? '✕ Exit Full Screen' : '⛶ Full Screen';
   fullscreenBtn.title = isFs ? 'Exit full screen' : 'View tree in full screen';
+  fitDiagramToViewport();
 });
 
 /* ── PWA: Register service worker ─────────────────────────── */

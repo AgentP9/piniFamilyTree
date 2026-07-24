@@ -56,6 +56,11 @@
   --diagram-eligible-glow-pulse: rgba(127, 255, 0, 0.95);
   --diagram-eligible-stroke-base: 2.75px;
   --diagram-eligible-stroke-pulse: 3.5px;
+  --diagram-active-stroke: #f7cb67;
+  --diagram-active-fill: #4f3a14;
+  --diagram-active-text: #fff0be;
+  --diagram-single-stroke: #f7d27a;
+  --diagram-single-fill: #453816;
 
   --radius:    12px;
   --radius-lg: 18px;
@@ -793,7 +798,7 @@ body.sidebar-hidden .sidebar {
 }
 
 .mermaid-container svg {
-  max-width: 100%;
+  max-width: none;
   height: auto;
 }
 
@@ -802,14 +807,23 @@ body.sidebar-hidden .sidebar {
 }
 
 .mermaid-container g.pft-node--active :is(rect, circle, ellipse, polygon, path) {
-  filter: drop-shadow(0 0 9px rgba(240, 192, 64, 0.6));
+  fill: var(--diagram-active-fill);
+  stroke: var(--diagram-active-stroke);
+  filter: drop-shadow(0 0 10px rgba(247, 203, 103, 0.58));
   stroke-width: 2.5px;
 }
 
+.mermaid-container g.pft-node--active :is(text, tspan) {
+  fill: var(--diagram-active-text);
+  font-weight: 700;
+}
+
 .mermaid-container g.pft-node--single :is(rect, circle, ellipse, polygon, path) {
+  fill: var(--diagram-single-fill);
+  stroke: var(--diagram-single-stroke);
   stroke-dasharray: 6 3;
   stroke-width: 2.25px;
-  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.38));
+  filter: drop-shadow(0 0 9px rgba(247, 210, 122, 0.45));
 }
 
 .mermaid-container g.pft-node--eligible :is(rect, circle, ellipse, polygon, path) {
@@ -1076,7 +1090,7 @@ body.sidebar-hidden .sidebar {
 }
 
 .card:fullscreen .mermaid-container svg {
-  max-width: 100%;
+  max-width: none;
   max-height: 100%;
   height: auto;
   width: auto;
