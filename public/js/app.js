@@ -245,7 +245,6 @@ function isSinglePerson(personId, coupledPersonIds = getCoupledPersonIds()) {
 
 function personInteractionClasses(personId) {
   const classes = [];
-  const registeredChildIds = selectedCoupleId ? getRegisteredChildIds() : null;
 
   if (selectedPersonId) {
     if (personId === selectedPersonId) {
@@ -260,7 +259,7 @@ function personInteractionClasses(personId) {
     if (!selectedCouple) return classes;
     if (personId === selectedCouple.person1Id || personId === selectedCouple.person2Id) {
       classes.push('is-active');
-    } else if (canRegisterChild(selectedCoupleId, personId, registeredChildIds)) {
+    } else if (canRegisterChild(selectedCoupleId, personId)) {
       classes.push('is-eligible');
     }
   }
@@ -779,7 +778,7 @@ function renderCoupleCapacityIndicator() {
   coupleCapacityIndicator.classList.toggle('is-warning', remainingPairs < COUPLE_CAPACITY_WARNING_THRESHOLD);
 }
 
-function canRegisterChild(coupleId, childId, registeredChildIds = getRegisteredChildIds()) {
+function canRegisterChild(coupleId, childId) {
   if (!coupleId || !childId) return false;
   const couple = getCouple(coupleId);
   if (!couple || !getPerson(childId)) return false;
@@ -787,7 +786,7 @@ function canRegisterChild(coupleId, childId, registeredChildIds = getRegisteredC
   if ((couple.childIds || []).includes(childId)) return false;
   const existingParentCouple = getChildParentCouple(childId);
   if (existingParentCouple && existingParentCouple.id !== coupleId) return false;
-  return !registeredChildIds.has(childId);
+  return true;
 }
 
 function collectPerspectiveData(rootPersonIds, anchoredCoupleId = null) {
