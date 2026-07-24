@@ -49,6 +49,8 @@
   --diagram-dimmed-opacity: 0.24;
   --diagram-dimmed-saturation: 0.2;
   --diagram-dimmed-brightness: 0.74;
+  --diagram-eligible-stroke-base: 3px;
+  --diagram-eligible-stroke-pulse: 3.8px;
 
   --radius:    12px;
   --radius-lg: 18px;
@@ -800,7 +802,7 @@ body.sidebar-hidden .sidebar {
 
 .mermaid-container g.pft-node--eligible :is(rect, circle, ellipse, polygon, path) {
   stroke-dasharray: 6 3;
-  stroke-width: 3px;
+  stroke-width: var(--diagram-eligible-stroke-base);
   filter: drop-shadow(0 0 14px rgba(127, 255, 0, 0.68));
   animation: mermaid-eligible-pulse 1.2s ease-in-out infinite;
 }
@@ -815,8 +817,8 @@ body.sidebar-hidden .sidebar {
 }
 
 @keyframes mermaid-eligible-pulse {
-  0%, 100% { stroke-width: 3px; }
-  50% { stroke-width: 3.8px; }
+  0%, 100% { stroke-width: var(--diagram-eligible-stroke-base); }
+  50% { stroke-width: var(--diagram-eligible-stroke-pulse); }
 }
 
 @media (prefers-reduced-motion: reduce) {
