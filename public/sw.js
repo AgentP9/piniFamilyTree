@@ -1,11 +1,11 @@
-const CACHE_NAME = 'pini-family-tree-v1';
+const CACHE_NAME = 'pini-family-tree-v2';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/css/style.css',
   '/js/storage.js',
-  '/js/mermaid-gen.js',
+  '/js/cytoscape-gen.js',
   '/js/app.js',
   '/icons/icon.svg'
 ];

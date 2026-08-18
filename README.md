@@ -1,6 +1,6 @@
 # 🌳 Pini Family Tree
 
-A Docker-based PWA for visualising **Fallout Shelter** vault dweller family trees, complete with a live Mermaid diagram.
+A Docker-based PWA for visualising **Fallout Shelter** vault dweller family trees, complete with a live Cytoscape diagram.
 
 ## ✨ Features
 
@@ -21,11 +21,11 @@ A Docker-based PWA for visualising **Fallout Shelter** vault dweller family tree
   - Sibling links are displayed in the diagram with dotted lines via a 👥 hub node.
   - Siblings cannot form a couple, consistent with the couple-formation rules.
 - **Delete protection** – a dweller can only be deleted when they are not part of a couple and not registered as a child.  Sibling links are cleaned up automatically when a dweller is deleted.
-- **Family tree diagram** – a live Mermaid flowchart that updates in real time.
+- **Family tree diagram** – a live Cytoscape graph that updates in real time.
   - Click a dweller to start a couple from that person, dim invalid partners, and focus the tree on that family perspective.
   - Click a couple to prefill the parent selector, highlight eligible children, and focus the tree on that branch.
   - Dwellers who are not part of any couple are highlighted as singles.
-  - Copy the Mermaid source with one click.
+  - Copy the Cytoscape graph data with one click.
   - View the tree in **full screen** for a better overview.
 - **Data management** – export / import the family tree as JSON; wipe all data.
 - **PWA** – installable, works offline (service-worker cached).
@@ -61,7 +61,7 @@ public/
   css/style.css       # Vault-Tec themed styles
   js/app.js           # Main UI controller
   js/storage.js       # LocalStorage persistence + JSON import/export
-  js/mermaid-gen.js   # Mermaid diagram code generator
+  js/cytoscape-gen.js # Cytoscape graph data generator
   index.html          # Single-page application shell
 Dockerfile            # nginx-based container image
 docker-compose.yml    # Compose file (port 3939)

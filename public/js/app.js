@@ -1,18 +1,12 @@
 /**
  * app.js — main UI controller for Pini Family Tree PWA.
  *
- * Depends on: storage.js, mermaid-gen.js, mermaid (CDN global)
+ * Depends on: storage.js, cytoscape-gen.js, cytoscape (CDN global)
  */
 
-/* ── Mermaid initialisation ───────────────────────────────── */
-// Guard: if the CDN failed to load the mermaid global, the rest of the app
-// (CRUD, persistence, lists) still works; the diagram area shows a warning.
-if (typeof mermaid !== 'undefined') {
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'dark',
-    flowchart: { curve: 'basis', useMaxWidth: true }
-  });
+/* ── Cytoscape initialisation ─────────────────────────────── */
+if (typeof cytoscape !== 'undefined' && typeof cytoscapeDagre !== 'undefined') {
+  cytoscape.use(cytoscapeDagre);
 }
 
 const GENDER_MALE = 'male';
@@ -27,11 +21,11 @@ const PERSON_NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensi
 /* ── App state ────────────────────────────────────────────── */
 let currentVault = null;
 let data = { persons: [], couples: [], siblingGroups: [] };
-let renderCounter = 0; // unique IDs for mermaid.render()
 let legacyIdCounter = 0;
 let selectedPersonIds = [];
 let selectedCoupleIds = [];
 let selectedSiblingGroupIds = [];
+let cy = null;
 
 /* ── DOM refs ─────────────────────────────────────────────── */
 const addPersonForm    = document.getElementById('add-person-form');
@@ -624,80 +618,262 @@ function clearSelection() {
   renderView();
 }
 
-function escapeSelectorValue(value) {
-  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
-    return CSS.escape(value);
+function getDiagramLayout() {
+  if (typeof cytoscapeDagre !== 'undefined') {
+    return {
+      name: 'dagre',
+      rankDir: 'TB',
+      nodeSep: 34,
+      rankSep: 80,
+      edgeSep: 18,
+      animate: false,
+      fit: true,
+      padding: 24
+    };
   }
-  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+  return {
+    name: 'breadthfirst',
+    directed: true,
+    animate: false,
+    fit: true,
+    padding: 24,
+    spacingFactor: 1.15
+  };
 }
 
-function findDiagramNode(rawId) {
-  const escapedId = escapeSelectorValue(rawId);
-  return mermaidDiagram.querySelector(
-    `g[data-id="${escapedId}"], g[id="${escapedId}"], g[id$="-${escapedId}"]`
-  );
+function getDiagramStyles() {
+  return [
+    {
+      selector: 'node',
+      style: {
+        label: 'data(label)',
+        color: '#f8fafc',
+        'font-size': 12,
+        'font-weight': 600,
+        'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        'text-wrap': 'wrap',
+        'text-max-width': 110,
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'overlay-opacity': 0
+      }
+    },
+    {
+      selector: 'node[kind = "person"]',
+      style: {
+        shape: 'round-rectangle',
+        width: 108,
+        height: 46,
+        'background-color': '#334155',
+        'border-width': 2,
+        'border-color': '#94a3b8',
+        'shadow-blur': 0,
+        'shadow-opacity': 0
+      }
+    },
+    {
+      selector: 'node[kind = "person"][gender = "male"]',
+      style: {
+        'background-color': '#23445c',
+        'border-color': '#75d7ff'
+      }
+    },
+    {
+      selector: 'node[kind = "person"][gender = "female"]',
+      style: {
+        'background-color': '#5a2b46',
+        'border-color': '#ff8fc8'
+      }
+    },
+    {
+      selector: 'node[kind = "couple"]',
+      style: {
+        shape: 'ellipse',
+        width: 34,
+        height: 34,
+        'background-color': '#3b3243',
+        'border-width': 2,
+        'border-color': '#f3c969',
+        color: '#fff3cf',
+        'font-size': 15
+      }
+    },
+    {
+      selector: 'node[kind = "siblingGroup"]',
+      style: {
+        shape: 'round-hexagon',
+        width: 42,
+        height: 42,
+        'background-color': '#352450',
+        'border-width': 2,
+        'border-color': '#c39bff',
+        color: '#f5edff',
+        'font-size': 16
+      }
+    },
+    {
+      selector: 'node[kind = "placeholder"]',
+      style: {
+        shape: 'round-rectangle',
+        width: 38,
+        height: 32,
+        'background-color': '#3f3f46',
+        'border-width': 2,
+        'border-color': '#a1a1aa',
+        color: '#fafafa',
+        'font-style': 'italic'
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        width: 2,
+        'line-color': '#8a94a6',
+        'target-arrow-color': '#8a94a6',
+        'curve-style': 'taxi',
+        'taxi-direction': 'vertical',
+        'taxi-turn': '28px'
+      }
+    },
+    {
+      selector: 'edge[kind = "partner"]',
+      style: {
+        'line-color': '#f3c969',
+        'target-arrow-shape': 'none'
+      }
+    },
+    {
+      selector: 'edge[kind = "child"]',
+      style: {
+        'line-color': '#8bd1ff',
+        'target-arrow-color': '#8bd1ff',
+        'target-arrow-shape': 'triangle'
+      }
+    },
+    {
+      selector: 'edge[kind = "sibling"]',
+      style: {
+        'line-color': '#c39bff',
+        'target-arrow-shape': 'none',
+        'line-style': 'dashed'
+      }
+    },
+    {
+      selector: '.pft-node--interactive',
+      style: {
+        cursor: 'pointer'
+      }
+    },
+    {
+      selector: '.pft-node--active',
+      style: {
+        'border-width': 3,
+        'border-color': '#f0c040',
+        'shadow-blur': 18,
+        'shadow-color': '#f0c040',
+        'shadow-opacity': 0.4
+      }
+    },
+    {
+      selector: '.pft-node--single',
+      style: {
+        'border-style': 'dashed'
+      }
+    },
+    {
+      selector: '.pft-node--eligible',
+      style: {
+        'background-color': '#475569',
+        'border-color': '#fbbf24',
+        'border-style': 'dashed',
+        'border-width': 3,
+        'shadow-blur': 14,
+        'shadow-color': '#fbbf24',
+        'shadow-opacity': 0.3
+      }
+    },
+    {
+      selector: '.pft-node--dimmed',
+      style: {
+        opacity: 0.3
+      }
+    }
+  ];
+}
+
+function resizeDiagram() {
+  if (!cy) return;
+  requestAnimationFrame(() => {
+    cy.resize();
+    cy.fit(undefined, 24);
+  });
 }
 
 function enhanceDiagramInteractivity(diagramData = getDiagramData()) {
-  mermaidDiagram.querySelectorAll('g.node').forEach((node) => {
-    node.classList.add('pft-node--interactive');
-  });
+  if (!cy) return;
+
+  cy.nodes().removeClass('pft-node--interactive pft-node--active pft-node--single pft-node--eligible pft-node--dimmed');
+  cy.nodes('[kind != "placeholder"]').addClass('pft-node--interactive');
 
   const coupledPersonIds = getCoupledPersonIds();
   const selectedCouples = getSelectedCouples();
   const selectedSiblingGroups = getSelectedSiblingGroups();
   const singleSelectedPersonId = getSingleSelectedPersonId();
   const singleSelectedCouple = getSingleSelectedCouple();
+
   data.persons.forEach((person) => {
-    const node = findDiagramNode(MermaidGen.nodeId(person.id));
-    if (!node) return;
-    node.dataset.personId = person.id;
+    const node = cy.getElementById(CytoscapeGen.nodeId(person.id));
+    if (node.empty()) return;
     if (isSinglePerson(person.id, coupledPersonIds)) {
-      node.classList.add('pft-node--single');
+      node.addClass('pft-node--single');
     }
     if (
       isPersonSelected(person.id) ||
       isPersonInSelectedCouples(person.id, selectedCouples) ||
       isPersonInSelectedSiblingGroups(person.id, selectedSiblingGroups)
     ) {
-      node.classList.add('pft-node--active');
+      node.addClass('pft-node--active');
     } else if (singleSelectedPersonId) {
       if (canFormCouple(singleSelectedPersonId, person.id)) {
-        node.classList.add('pft-node--eligible');
+        node.addClass('pft-node--eligible');
       } else {
-        node.classList.add('pft-node--dimmed');
+        node.addClass('pft-node--dimmed');
       }
     } else if (singleSelectedCouple && canRegisterChild(singleSelectedCouple.id, person.id)) {
-      node.classList.add('pft-node--eligible');
+      node.addClass('pft-node--eligible');
     }
   });
 
-  data.couples.forEach((couple) => {
-    const node = findDiagramNode(MermaidGen.pairNodeId(couple.id));
-    if (!node) return;
-    node.dataset.coupleId = couple.id;
+  data.couples.forEach((couple, index) => {
+    const node = cy.getElementById(CytoscapeGen.pairNodeId(couple.id || `fallback-${index + 1}`));
+    if (node.empty()) return;
     if (isCoupleSelected(couple.id)) {
-      node.classList.add('pft-node--active');
+      node.addClass('pft-node--active');
     }
   });
 
-  (diagramData.siblingGroups || []).forEach((group, index) => {
-    const node = findDiagramNode(`SibGroup${index + 1}`);
-    if (!node) return;
-    node.dataset.siblingGroupId = group.id;
+  (diagramData.siblingGroups || []).forEach((group) => {
+    const node = cy.nodes().filter((element) => element.data('siblingGroupId') === group.id);
+    if (node.empty()) return;
     if (isSiblingGroupSelected(group.id)) {
-      node.classList.add('pft-node--active');
+      node.addClass('pft-node--active');
     }
   });
 }
 
-/* ── Mermaid diagram ──────────────────────────────────────── */
-async function renderDiagram() {
+/* ── Cytoscape diagram ────────────────────────────────────── */
+function renderDiagram() {
   const diagramData = getDiagramData();
-  const code = MermaidGen.generate(diagramData);
-  mermaidCodePre.textContent = code || '(empty)';
+  const graph = CytoscapeGen.generate(diagramData);
+  mermaidCodePre.textContent = graph.code || '(empty)';
 
-  if (!code) {
+  if (cy) {
+    cy.destroy();
+    cy = null;
+  }
+
+  if (graph.elements.length === 0) {
     mermaidDiagram.innerHTML = `
       <div class="empty-state">
         <p>🏠 Add dwellers and form couples to grow your vault family tree!</p>
@@ -705,20 +881,39 @@ async function renderDiagram() {
     return;
   }
 
-  if (typeof mermaid === 'undefined') {
+  if (typeof cytoscape === 'undefined') {
     mermaidDiagram.innerHTML = `
       <div class="empty-state">
         ⚠️ Diagram library not loaded — check your internet connection.<br>
-        <small>The Mermaid source is still available below.</small>
+        <small>The Cytoscape graph data is still available below.</small>
       </div>`;
     return;
   }
 
   try {
-    const id = `mermaid-svg-${++renderCounter}`;
-    const { svg } = await mermaid.render(id, code);
-    mermaidDiagram.innerHTML = svg;
+    mermaidDiagram.innerHTML = '';
+    cy = cytoscape({
+      container: mermaidDiagram,
+      elements: graph.elements,
+      style: getDiagramStyles(),
+      layout: getDiagramLayout(),
+      minZoom: 0.3,
+      maxZoom: 2.2,
+      wheelSensitivity: 0.2
+    });
+
+    cy.on('tap', 'node[kind = "person"]', (event) => {
+      selectPerson(event.target.data('personId'));
+    });
+    cy.on('tap', 'node[kind = "couple"]', (event) => {
+      selectCouple(event.target.data('coupleId'));
+    });
+    cy.on('tap', 'node[kind = "siblingGroup"]', (event) => {
+      selectSiblingGroup(event.target.data('siblingGroupId'));
+    });
+
     enhanceDiagramInteractivity(diagramData);
+    resizeDiagram();
   } catch (err) {
     mermaidDiagram.innerHTML = `<div class="empty-state" style="color:var(--danger)">Diagram error: ${escapeHtml(err.message)}</div>`;
   }
@@ -1228,31 +1423,15 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
-  const personNode = e.target.closest('[data-person-id]');
-  if (personNode && mermaidDiagram.contains(personNode)) {
-    selectPerson(personNode.dataset.personId);
-    return;
-  }
-
-  const coupleNode = e.target.closest('[data-couple-id]');
-  if (coupleNode && mermaidDiagram.contains(coupleNode)) {
-    selectCouple(coupleNode.dataset.coupleId);
-    return;
-  }
-
-  const siblingGroupNode = e.target.closest('[data-sibling-group-id]');
-  if (siblingGroupNode && mermaidDiagram.contains(siblingGroupNode)) {
-    selectSiblingGroup(siblingGroupNode.dataset.siblingGroupId);
-  }
 });
 
-/* ── Event: Copy Mermaid code ─────────────────────────────── */
+/* ── Event: Copy graph data ───────────────────────────────── */
 copyMermaidBtn.addEventListener('click', async () => {
   const code = mermaidCodePre.textContent;
   if (!code || code === '(empty)') { showToast('Nothing to copy', 'error'); return; }
   try {
     await navigator.clipboard.writeText(code);
-    showToast('Mermaid code copied!', 'success');
+    showToast('Cytoscape graph data copied!', 'success');
   } catch (_) {
     showToast('Copy not supported in this browser', 'error');
   }
@@ -1357,7 +1536,10 @@ document.addEventListener('fullscreenchange', () => {
   const isFs = !!document.fullscreenElement;
   fullscreenBtn.innerHTML = isFs ? '✕ Exit Full Screen' : '⛶ Full Screen';
   fullscreenBtn.title = isFs ? 'Exit full screen' : 'View tree in full screen';
+  resizeDiagram();
 });
+
+window.addEventListener('resize', resizeDiagram);
 
 /* ── PWA: Register service worker ─────────────────────────── */
 if ('serviceWorker' in navigator) {

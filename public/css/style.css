@@ -784,67 +784,24 @@ body.sidebar-hidden .sidebar {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 1rem;
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0.75rem;
+  min-height: 420px;
+  position: relative;
   overflow: auto;
 }
 
-.mermaid-container svg {
-  max-width: 100%;
-  height: auto;
+.mermaid-container canvas {
+  display: block;
 }
 
-.mermaid-container g.pft-node--interactive {
-  cursor: pointer;
-}
-
-.mermaid-container g.pft-node--active :is(rect, circle, ellipse, polygon, path) {
-  filter: drop-shadow(0 0 9px rgba(240, 192, 64, 0.6));
-  stroke-width: 2.5px;
-}
-
-.mermaid-container g.pft-node--single :is(rect, circle, ellipse, polygon, path) {
-  stroke-dasharray: 6 3;
-  stroke-width: 2.25px;
-  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.38));
-}
-
-.mermaid-container g.pft-node--eligible :is(rect, circle, ellipse, polygon, path) {
-  fill: var(--diagram-eligible-fill);
-  stroke: var(--diagram-eligible-stroke);
-  stroke-dasharray: 6 3;
-  stroke-width: var(--diagram-eligible-stroke-base);
-  animation: mermaid-eligible-pulse 1.2s ease-in-out infinite;
-}
-
-.mermaid-container g.pft-node--eligible :is(text, tspan) {
-  font-weight: 700;
-  fill: var(--diagram-eligible-text);
-}
-
-.mermaid-container g.pft-node--dimmed {
-  opacity: var(--diagram-dimmed-opacity);
-  filter: saturate(var(--diagram-dimmed-saturation)) brightness(var(--diagram-dimmed-brightness));
-}
-
-@keyframes mermaid-eligible-pulse {
-  0%, 100% {
-    stroke-width: var(--diagram-eligible-stroke-base);
-    filter: drop-shadow(0 0 10px var(--diagram-eligible-glow-base));
-  }
-  50% {
-    stroke-width: var(--diagram-eligible-stroke-pulse);
-    filter: drop-shadow(0 0 18px var(--diagram-eligible-glow-pulse));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mermaid-container g.pft-node--eligible :is(rect, circle, ellipse, polygon, path) {
-    animation: none;
-  }
+.mermaid-container .empty-state {
+  width: 100%;
+  height: 100%;
+  min-height: 388px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ---------- empty state ---------- */
@@ -1075,11 +1032,9 @@ body.sidebar-hidden .sidebar {
   max-height: none;
 }
 
-.card:fullscreen .mermaid-container svg {
-  max-width: 100%;
-  max-height: 100%;
-  height: auto;
-  width: auto;
+.card:fullscreen .mermaid-container canvas {
+  max-width: none;
+  max-height: none;
 }
 
 /* ---------- vault picker modal ---------- */
