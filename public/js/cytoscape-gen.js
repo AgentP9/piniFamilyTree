@@ -103,27 +103,26 @@ const CytoscapeGen = (() => {
             }
           });
         });
-        return;
+      } else {
+        const placeholderId = placeholderNodeId(couple.id, index);
+        elements.push({
+          group: 'nodes',
+          data: {
+            id: placeholderId,
+            label: '?',
+            kind: 'placeholder'
+          }
+        });
+        elements.push({
+          group: 'edges',
+          data: {
+            id: edgeId('child', pairId, placeholderId),
+            source: pairId,
+            target: placeholderId,
+            kind: 'child'
+          }
+        });
       }
-
-      const placeholderId = placeholderNodeId(couple.id, index);
-      elements.push({
-        group: 'nodes',
-        data: {
-          id: placeholderId,
-          label: '?',
-          kind: 'placeholder'
-        }
-      });
-      elements.push({
-        group: 'edges',
-        data: {
-          id: edgeId('child', pairId, placeholderId),
-          source: pairId,
-          target: placeholderId,
-          kind: 'child'
-        }
-      });
     });
 
     siblingGroups.forEach((group, index) => {
